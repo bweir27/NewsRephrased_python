@@ -1,2 +1,1 @@
 # NewsRephrased
-init

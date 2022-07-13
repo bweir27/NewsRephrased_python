@@ -1,0 +1,4 @@
+gspread==5.4.0
+numpy==1.23.0
+pymongo==4.1.1
+tweepy==4.10.0
