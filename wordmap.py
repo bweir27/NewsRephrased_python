@@ -105,6 +105,7 @@ WORD_MAP = {
     "member": "fan",
     "Elon Musk": "Grimes\' ex",
     "gasoline": "weed",
+    "gas ": "weed",
     " gas ": " weed "
 }
 

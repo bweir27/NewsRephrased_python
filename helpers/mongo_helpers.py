@@ -44,7 +44,7 @@ def get_all_known_authors(author_db=None):
     return author_db.find({})
 
 
-def insert_author_into_db(parsed_author, author_db=None):
+def insert_author_into_db(parsed_author: TweetAuthor, author_db=None):
     if parsed_author is None or not isinstance(parsed_author, TweetAuthor):
         raise Exception('Invalid input for \"parsed_author\" '
                         f'(expected type TweetAuthor, received {type(parsed_author)}')

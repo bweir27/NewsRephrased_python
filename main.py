@@ -102,7 +102,8 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         for target in targets:
             print(f'Updates from @{target.username}:')
             most_recent_tweet_id_mongo = get_most_recent_seen_tweet_id_mongo(author_id=target.author_id)
-            print(f'\tMost recent tweet ID from @{target.username}: {most_recent_tweet_id_mongo}')
+            if args.show_debug_logs:
+                print(f'\tMost recent tweet ID from @{target.username}: {most_recent_tweet_id_mongo}')
 
             # Get User data for Twitter User
             target_user = twitter_client.get_user(username=str(target.username))
@@ -120,18 +121,36 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
                 user_fields=["username"]
             )
             print('done.')
-            result_count = target_recent_tweets.meta["result_count"]
-            print(f'\tRetrieved {result_count} new Tweets from @{target.username}.')
 
             # If there are no new Tweets, Twitter / Tweepy API returns data=None (as opposed to an empty list)
-            if target_recent_tweets.data:
-                tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, author=target), target_recent_tweets.data))
+            if target_recent_tweets.meta["result_count"] > 0:
+                raw_tweet_objs = list()
+                raw_tweet_objs.extend(target_recent_tweets.data)
+                # pagination
+                while target_recent_tweets.meta["result_count"] > 0 and "next_token" in target_recent_tweets.meta:
+                    next_page_token = target_recent_tweets.meta["next_token"]
+                    target_recent_tweets = twitter_client.get_users_tweets(
+                        id=target_user.data.id,
+                        since_id=most_recent_tweet_id_mongo,
+                        exclude=["retweets", "replies"],
+                        max_results=100,
+                        tweet_fields=["id", "text", "created_at"],
+                        expansions=["author_id"],
+                        user_fields=["username"],
+                        pagination_token=next_page_token
+                    )
+                    if target_recent_tweets.data:
+                        raw_tweet_objs.extend(target_recent_tweets.data)
+                result_count = len(raw_tweet_objs)
+                print(f'\tRetrieved {result_count} new Tweets from @{target.username}.')
+                tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, author=target), raw_tweet_objs))
                 print('\tChecking how many of these have already been seen...')
                 num_have_been_seen = count_num_in_seen_db(
                     seen_db=seen_tweet_db,
                     parsed_tweets=tweet_objs
                 )
-                print(f'\t{num_have_been_seen} of these {"has" if num_have_been_seen == 1 else "have"} been seen before.')
+                print(f'\t{num_have_been_seen} of these '
+                      f'{"has" if num_have_been_seen == 1 else "have"} been seen before.')
                 if num_have_been_seen == len(tweet_objs):
                     print('\tAll of these have been seen before!\nExiting...')
                 else:
@@ -163,21 +182,25 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
                     )
                     print('done.')
                     print(f'\t{len(tweet_objs)} Tweets by @{target.username} were marked as seen.')
-                    worksheet_update_num = update_suggested_tweet_wks(
-                        worksheet=suggest_wks,
-                        partial_update=True,
-                        show_output=args.show_debug_logs
-                    )
-                    update_wordmap_wks(
-                        worksheet=map_wks,
-                        show_output=args.show_debug_logs
-                    )
                     num_added_this_run += num_inserted
-                    session_num_added += num_inserted
-                    print(f'\t{worksheet_update_num} changes in worksheet')
             else:
+                result_count = target_recent_tweets.meta["result_count"]
+                print(f'\tRetrieved {result_count} new Tweets from @{target.username}.')
                 print(f'\tNo new tweets by @{target.username}, we\'ll check again later...')
         print(f'This concludes the current run.')
+        if num_added_this_run > 0:
+            worksheet_update_num = update_suggested_tweet_wks(
+                worksheet=suggest_wks,
+                partial_update=True,
+                show_output=args.show_debug_logs
+            )
+            update_wordmap_wks(
+                worksheet=map_wks,
+                show_output=args.show_debug_logs
+            )
+            print(f'\t{worksheet_update_num} changes in worksheet')
+        session_num_added += num_added_this_run
+
         print(f'\nTweets added this run:\t\t{num_added_this_run}')
         print(f'Total Tweets added this session:\t{session_num_added}')
         next_run_start = run_start_time + datetime.timedelta(seconds=time_interval_seconds)
