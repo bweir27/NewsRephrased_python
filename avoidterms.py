@@ -13,5 +13,13 @@ IGNORE_TERMS = [
     "fatally",
     "Ulvade",
     "massacre",
-    "shooter"
+    "shooter",
+    "Jayland Walker",
+    "rape",
+    "rapist",
+    "sexual assualt",
+    "suicide",
+    "torture",
+    "anorexia",
+    "anorexic"
 ]
