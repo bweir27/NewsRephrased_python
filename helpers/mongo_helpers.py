@@ -3,6 +3,7 @@ from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
 
+
 # =============== SETUP OPERATIONS =========
 
 
@@ -71,13 +72,12 @@ def get_most_recent_seen_tweet_id_mongo(author_id=None):
     if author_id:
         auth_id = str(author_id)
         find_query = {"author.author_id": auth_id}
-    #     Ensure at least one tweet from this author has been seen before
+        #     Ensure at least one tweet from this author has been seen before
         num_seen = seen_tweet_db.count_documents(find_query)
         if num_seen is None or num_seen <= 0:
             return get_oldest_seen_tweet_id_mongo()
     max_id = seen_tweet_db.find(find_query).sort("tweet_id", -1)[0]
     return str(max_id["tweet_id"])
-
 
 
 def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
@@ -117,7 +117,7 @@ def insert_tweet_to_seen_db(seen_db, parsed_tweet):
     return res
 
 
-def insert_many_tweets_to_seen_db(seen_db, parsed_tweets):
+def insert_many_tweets_to_seen_db(seen_db, parsed_tweets) -> list:
     res_arr = list()
     for t in parsed_tweets:
         if not isinstance(t, ParsedTweet):
@@ -127,14 +127,14 @@ def insert_many_tweets_to_seen_db(seen_db, parsed_tweets):
     return res_arr
 
 
-# ========= SEEN Tweet Operations ===========
+# ========= Tweet Operations ===========
 
 
-def get_most_recent_tweet_id_from_mongo(mongo_collection, author_id=None):
+def get_most_recent_tweet_id_from_mongo(mongo_collection, author_id=None) -> str:
     find_query = {}
     if author_id:
         find_query = {"author.author_id": str(author_id)}
-    latest_id = mongo_collection.find(find_query).sort("tweet_id", -1).limit(1)[0]  # [("tweet_id", pymongo.DESCENDING)])
+    latest_id = mongo_collection.find(find_query).sort("tweet_id", -1).limit(1)[0]
     return str(latest_id["tweet_id"])
 
 
@@ -146,27 +146,6 @@ def tweet_in_mongo(db_coll, tweet):
     else:
         id_val = str(tweet["tweet_id"])
     return db_coll.count_documents({"tweet_id": id_val}) > 0
-
-
-# def tweet_has_been_seen_mongo(db_coll, tweet, max_seen_id="1"):
-#     if "tweet_id" not in tweet:
-#         if "id" not in tweet:
-#             raise Exception('Invalid Tweet')
-#         id_val = str(tweet["id"])
-#     else:
-#         id_val = str(tweet["tweet_id"])
-#     last_seen_tweet_id = max_seen_id
-#     if max_seen_id <= "1":
-#         last_seen_tweet_id = get_most_recent_tweet_id_from_mongo(db_coll)
-#     return id_val < last_seen_tweet_id
-
-
-# def unseen_tweet_mongo(db_coll, tweet, max_seen_id="0"):
-#     return not tweet_has_been_seen_mongo(db_coll=db_coll, tweet=tweet, max_seen_id=max_seen_id)
-
-
-# def filter_seen_tweets_mongo(db_coll, tweet, max_seen_id="0"):
-#     return unseen_tweet_mongo(db_coll=db_coll, tweet=tweet, max_seen_id=max_seen_id)
 
 
 def insert_parsed_tweet_to_mongodb(tweet_db, parsed_tweet):
@@ -198,41 +177,31 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
         "res_list": res_list
     }
 
-# def update_tweet_mongo_db(db, tweetData, filter_unseen=True, last_seen_id=-1):
-#     unseen_tweets = tweetData
-#     if filter_unseen:
-#         if float(last_seen_id) < 0:
-#             last_seen_id = str(get_most_recent_tweet_id_from_mongo(db))
-#         # unseen_tweets = list(
-#         #     filter(lambda x: filter_seen_tweets(worksheet=worksheet, tweet=x, max_seen_id=last_seen_id), tweetData)
-#         # )
-#     to_add = []
-#     for t in tweetData:
-#         if filter_unseen:
-#             if str(t["tweet_id"]) > str(last_seen_id):
-#                 this_tweet = ParsedTweet(
-#                     author_id=t["tweet_author"],
-#                     tweet_id=t["tweet_id"],
-#                     num_replacements=t["num_replacements"],
-#                     original_text=t["original_text"],
-#                     modified_text=t["modified_text"],
-#                     tweet_url=t["tweet_url"],
-#                     created_at=str(t["created_at"]),
-#                     mapped_keys=t["mapped_keys"]
-#                 )
-#                 to_add.append(this_tweet.as_json())
-#         else:
-#             curr_tweet = ParsedTweet(
-#                 author_id=t["tweet_author"],
-#                 tweet_id=float(t["tweet_id"]),
-#                 num_replacements=t["num_replacements"],
-#                 original_text=t["original_text"],
-#                 modified_text=t["modified_text"],
-#                 tweet_url=t["tweet_url"],
-#                 created_at=str(t["created_at"]),
-#                 mapped_keys=t["mapped_keys"]
-#             )
-#             to_add.append(curr_tweet.as_json())
-#     num_added = len(to_add)
-#     db.insert_many(to_add)
-#     return num_added
+
+# ========= Stats / Other Operations ===========
+
+
+def get_num_times_keys_used():
+    """
+    Returns a frequency table containing the number of times each key in the wordmap has been used
+        -   Note: unused words will not be in the freqTable
+    """
+    tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    pipeline = [
+        {"$unwind": "$mapped_keys"},
+        {"$group": {"_id": "$mapped_keys", "count": {"$sum": 1}}},
+        {"$group": {
+            "_id": None,
+            "counts": {
+                "$push": {
+                    "k": "$_id",
+                    "v": "$count"
+                }
+            }
+        }},
+        {"$replaceRoot": {
+            "newRoot": {"$arrayToObject": "$counts"}
+        }}
+    ]
+    counts = tweet_db.aggregate(pipeline=pipeline).next()
+    return counts

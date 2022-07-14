@@ -1,5 +1,32 @@
-SEED_DATA_CSV = "CSVs/NewsRephrased_SeededSuggestions.csv"
+# ======== General constants ========
+REFRESH_DB_DESC = 'Refreshes the Mongo database of parsed Tweets before running.'
+REFRESH_DB_ENABLED = True
+REFRESH_DB_DISABLED = False
 
+REFRESH_WKS_DESC = 'Refreshes the Google Spreadsheets before running.'
+REFRESH_WKS_ENABLED = True
+REFRESH_WKS_DISABLED = False
+
+REFRESH_ALL_DESC = 'Short-hand for using both \"--refresh-db\" and \"--refresh-wks\" arguments together.'
+REFRESH_ALL_ENABLED = True
+REFRESH_ALL_DISABLED = False
+
+INTERVAL_DESC = 'An \'int\' value representing the time interval (in minutes) to wait between runs.'
+ENFORCE_MIN_INTERVAL = True
+IGNORE_MIN_INTERVAL = False
+
+DEBUG_LOG_DESC = 'Shows debugging logs in output'
+DEBUG_LOGS_ENABLED = True
+DEBUG_LOGS_DISABLED = False
+
+DEFAULT_INTERVAL_MINUTES = 30
+MIN_INTERVAL_SECONDS = 120
+USE_DEV_ENV = False
+SCRIPT_DESCRIPTION = ''
+EPILOG = ''
+
+
+SEED_DATA_CSV = "CSVs/NewsRephrased_SeededSuggestions.csv"
 
 # ======== Google constants ========
 SPREADSHEET_NAME = "NewsRephrased"
@@ -44,16 +71,6 @@ HEADER_ROW_BORDER = {
     }
   }
 }
-
-"""
-These are the terms that map to each other in the replacement filter (see wordmap.py)
-    Keep track of these to avoid re-/un-mapping these terms (resulting in a net-zero change in the text)
-"""
-WORDMAP_SWAP_CASES = [
-    "years", "minutes",
-    "Netflix", "Quibi",
-    "international", "local"
-]
 
 
 # ======== Twitter constants ========

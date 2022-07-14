@@ -1,6 +1,6 @@
 import gspread
 from constants import *
-from helpers.mongo_helpers import init_mongo_client
+from helpers.mongo_helpers import init_mongo_client, get_num_times_keys_used
 from wordmap import WORD_MAP
 
 
@@ -69,15 +69,15 @@ def update_wordmap_wks(worksheet=None, show_output: bool = False):
     to_add = list()
     start_cell = 'A2'
     wordmap_wks = worksheet
+    key_freq_counts = get_num_times_keys_used()
     if wordmap_wks is None:
         wordmap_wks = init_google_drive_clients()[SUGGESTION_WORKSHEET_NUM]
     if show_output:
         print('Updating wordmap spreadsheet...', end='')
-
     for key in WORD_MAP:
-        to_add.append([key, WORD_MAP[key]])
-    if show_output:
-        print(to_add)
+        freq = key_freq_counts[key] if key in key_freq_counts else 0
+        to_add.append([key, WORD_MAP[key], int(freq)])
+    worksheet.batch_clear([f'{start_cell}:C{len(to_add)+20}'])
     wordmap_wks.update(start_cell, to_add)
     if show_output:
         print('done.')
@@ -165,14 +165,6 @@ def update_suggested_tweet_wks(worksheet=None, partial_update: bool = True, show
     if num_found_tweets > 0:
         for t in known_tweets:
             to_add.append(t)
-        # to_display = list(map(lambda x: [x["author"]["username"],
-        #                                  x["tweet_url"],
-        #                                  x["num_replacements"],
-        #                                  x["original_text"],
-        #                                  x["modified_text"],
-        #                                  x["tweet_id"],
-        #                                  str(x["created_at"]),
-        #                                  ', '.join(x["mapped_keys"])], to_add))
         to_display = list(map(format_suggested_tweet_worksheet_row, to_add))
         if show_output:
             print('Updating...', end='')
@@ -182,8 +174,13 @@ def update_suggested_tweet_wks(worksheet=None, partial_update: bool = True, show
     return num_found_tweets
 
 
-def update_worksheets(show_output=False):
+def update_worksheets(partial_update=True, show_output=False):
     google_clients = init_google_drive_clients()
     wordmap_worksheet = google_clients[WORDMAP_WORKSHEET_NUM]
     suggest_worksheet = google_clients[SUGGESTION_WORKSHEET_NUM]
-    update_suggested_tweet_wks(suggest_worksheet, partial_update=True, show_output=False)
+    update_wordmap_wks(worksheet=wordmap_worksheet, show_output=show_output)
+    update_suggested_tweet_wks(worksheet=suggest_worksheet, partial_update=partial_update, show_output=show_output)
+
+
+def complete_refresh_spreadsheets(show_output=False):
+    update_worksheets(partial_update=False, show_output=show_output)

@@ -4,8 +4,9 @@ from replacement_filter import apply_replacement_filter
 
 
 class ParsedTweet:
-    def __init__(self, author, tweet_id, original_text, created_at, tweet_url='',
-                 mapped_keys=None, modified_text='', num_replacements=0, been_posted=False):
+    def __init__(self, author: TweetAuthor, tweet_id: float or str, original_text: str, created_at: datetime.datetime,
+                 tweet_url: str = '', mapped_keys=None, modified_text: str = '', num_replacements: int = 0,
+                 been_posted: bool = False):
         if not isinstance(author, TweetAuthor):
             raise Exception(f'Invalid type for \"author\" (expected TweetAuthor, received {type(author)}')
 

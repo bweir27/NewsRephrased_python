@@ -2,6 +2,8 @@ import re
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
+from helpers.mongo_helpers import init_mongo_client, get_all_known_authors, insert_parsed_tweets_to_mongodb
+from helpers.twitter_helpers import init_twitter_client
 from replacement_filter import apply_replacement_filter
 
 
@@ -18,11 +20,6 @@ def sort_by_tweet_id(tweet) -> str:
 def get_date_for_tweet_by_id(t_id, twitter_client):
     t = twitter_client.get_tweet(id=t_id, tweet_fields=["id", "text", "created_at"], expansions=["author_id"])
     return t.data["created_at"]
-
-
-# def get_most_recent_tweet_id_from_mongo(mongo_collection):
-#     latest_id = mongo_collection.find().sort("tweet_id", -1).limit(1)[0]    #   [("tweet_id", pymongo.DESCENDING)])
-#     return str(latest_id["tweet_id"])
 
 
 def extract_tweet_id_from_url(url: str) -> str:
@@ -60,84 +57,69 @@ def get_parsed_tweet_obj(tweet, author: TweetAuthor) -> ParsedTweet:
     return res
 
 
-# def parse_tweet(username, tweet):
-#     source = username
-#     tweet_info = tweet["id"]
-#     filterInfo = apply_replacement_filter(tweet["text"])
-#     return {
-#         "tweet_author": username,
-#         "tweet_id": str(tweet["id"]),
-#         "num_replacements": filterInfo["num_replacements"],
-#         "original_text": filterInfo["original_text"],
-#         "modified_text": filterInfo["modified_text"],
-#         "tweet_url": f'{BASE_URL}{username}/status/{tweet["id"]}',
-#         "created_at": tweet["created_at"],
-#         "mapped_keys": filterInfo["replaced_keys"]
-#     }
+def revisit_seen_tweets(show_output=False):
+    # refresh Mongo connections
+    db = init_mongo_client()
+    tweet_db = db[DB_TWEET_COLLECTION_NAME]
+    seen_db = db[DB_SEEN_COLLECTION_NAME]
+    tweet_db.drop()
+    # refresh Twitter client
+    twitter_client = init_twitter_client()
+    all_seen_tweet_docs = seen_db.find({}).sort("tweet_id", -1)
+
+    # get list of the IDs of the
+    to_visit_ids = list()
+    for t in all_seen_tweet_docs:
+        to_visit_ids.append(str(t["tweet_id"]))
+    split_size = 100
+    a_splitted = [to_visit_ids[x:x + split_size] for x in range(0, len(to_visit_ids), split_size)]
+    known_authors_res = get_all_known_authors()
+    authors = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
+    auth_dict = {}
+    for a in authors:
+        auth_dict[str(a.author_id)] = a
+
+    for segment in a_splitted:
+        retrieved_tweets = twitter_client.get_tweets(ids=segment,
+                                                     expansions="author_id",
+                                                     tweet_fields=["id", "text", "created_at"],
+                                                     user_fields=["username"]
+                                                     )
+        if show_output:
+            print(f'{len(retrieved_tweets.data)} Tweets retrieved.')
+        tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]), retrieved_tweets.data))
+        if show_output:
+            print('Inserting...', end=' ')
+        insert_res = insert_parsed_tweets_to_mongodb(tweet_db=tweet_db, parsed_tweets=tweet_objs)
+        if show_output:
+            print(f'{insert_res["num_skipped"]} skipped.')
+    if show_output:
+        print('Done.')
 
 
-# def map_parse_tweet(username, tweet):
-#     return parse_tweet(username, tweet)
-
-#
-# def update_tweet_mongo_db(db, tweetData, filter_unseen=True, last_seen_id=-1):
-#     unseen_tweets = tweetData
-#     if filter_unseen:
-#         if float(last_seen_id) < 0:
-#             last_seen_id = str(get_most_recent_tweet_id_from_mongo(db))
-#         # unseen_tweets = list(
-#         #     filter(lambda x: filter_seen_tweets(worksheet=worksheet, tweet=x, max_seen_id=last_seen_id), tweetData)
-#         # )
-#     to_add = []
-#     for t in tweetData:
-#         if filter_unseen:
-#             if str(t["tweet_id"]) > str(last_seen_id):
-#                 this_tweet = ParsedTweet(
-#                     tweet_author=t["tweet_author"],
-#                     tweet_id=t["tweet_id"],
-#                     num_replacements=t["num_replacements"],
-#                     original_text=t["original_text"],
-#                     modified_text=t["modified_text"],
-#                     tweet_url=t["tweet_url"],
-#                     created_at=str(t["created_at"]),
-#                     mapped_keys=t["mapped_keys"]
-#                 )
-#                 to_add.append(this_tweet.asJson())
-#         else:
-#             curr_tweet = ParsedTweet(
-#                 tweet_author=t["tweet_author"],
-#                 tweet_id=float(t["tweet_id"]),
-#                 num_replacements=t["num_replacements"],
-#                 original_text=t["original_text"],
-#                 modified_text=t["modified_text"],
-#                 tweet_url=t["tweet_url"],
-#                 created_at=str(t["created_at"]),
-#                 mapped_keys=t["mapped_keys"]
-#             )
-#             to_add.append(curr_tweet.asJson())
-#
-#     num_added = len(to_add)
-#     db.insert_many(to_add)
-#     return num_added
+# =============== UNIT CONVERSIONS  =========
 
 
-# def update_tweet_spreadsheet(worksheet, tweetData, filter_unseen=True, last_seen_id=-1):
-#     unseen_tweets = tweetData
-#     if filter_unseen:
-#         if last_seen_id < 0:
-#             last_seen_id = int(get_most_recent_tweet_id_from_worksheet(worksheet))
-#         unseen_tweets = list(
-#             filter(lambda x: filter_seen_tweets(worksheet=worksheet, tweet=x, max_seen_id=str(last_seen_id)), tweetData)
-#         )
-#     to_display = list(map(lambda x: [x["tweet_author"],
-#                                      x["tweet_url"],
-#                                      x["num_replacements"],
-#                                      x["original_text"],
-#                                      x["modified_text"],
-#                                      x["tweet_id"],
-#                                      str(x["created_at"]),
-#                                      ', '.join(x["mapped_keys"])], unseen_tweets))
-#     firstBlankRow = get_first_blank_row(worksheet)
-#     startCell = ''.join([firstBlankRow[0], str(firstBlankRow[1])])
-#     worksheet.update(''.join(startCell), to_display)
-#     return len(to_display)
+def hours_to_seconds(num_hours: float = 1.0) -> float:
+    num_seconds = round(num_hours * 60 * 60, 2)
+    if num_seconds < MIN_INTERVAL_SECONDS:
+        raise Exception(f'Interval must be longer than {MIN_INTERVAL_SECONDS}')
+    return num_seconds
+
+
+def minutes_to_seconds(num_minutes: int = DEFAULT_INTERVAL_MINUTES) -> float:
+    num_seconds = round(num_minutes * 60, 2)
+    if num_seconds < MIN_INTERVAL_SECONDS:
+        raise Exception(f'Interval must be longer than {MIN_INTERVAL_SECONDS}')
+    return num_seconds
+
+
+def seconds_to_minutes(num_seconds: float) -> float:
+    num_minutes = round((num_seconds / 60), 3)
+    return num_minutes
+
+
+def seconds_to_hours(num_seconds):
+    num_hours = round((num_seconds / 60) / 60, 3)
+    return num_hours
+

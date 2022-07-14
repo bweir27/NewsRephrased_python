@@ -1,10 +1,16 @@
 import re
 from avoidterms import IGNORE_TERMS
-from constants import WORDMAP_SWAP_CASES
-from wordmap import WORD_MAP
+from wordmap import WORD_MAP, WORDMAP_SWAP_CASES
 
 
-def apply_replacement_filter(text):
+def normalize_str(text: str) -> str:
+    res = re.sub(pattern=r'\s+', repl=' ', string=text, count=20)
+    res = re.sub(pattern=r'\s+([?.,:;!"](?:\s|$))', repl=r'\1', string=res, count=20)
+    res = res.strip()
+    return res
+
+
+def apply_replacement_filter(text: str) -> dict:
     lower_text = str(text)
     replaced_words_list = []
     for c in IGNORE_TERMS:
@@ -28,7 +34,7 @@ def apply_replacement_filter(text):
                 result = re.sub(pattern=case_insensitive, repl=WORD_MAP[key], string=result, count=10)
                 replaced_words_list.append(key)
                 num_replacements += 1
-    result = result.replace('  ', ' ')
+    result = normalize_str(result)
     return {
         "num_replacements": num_replacements,
         "original_text": text,

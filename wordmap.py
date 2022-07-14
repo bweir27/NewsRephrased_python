@@ -45,8 +45,8 @@ WORD_MAP = {
     "an unknown number": "like hundreds",
     "front runner": "blade runner",
     "global": "spherical",
-    "years": "minutes",
-    "minutes": "years",
+    "year": "minute",
+    "minute": "year",
     "no indication": "lots of signs",
     "urged restraint by": "drunkenly egged on",
     "horsepower": "tons of horsemeat",
@@ -68,10 +68,11 @@ WORD_MAP = {
     "tweets": "screams into pillow",
     "tweet": "poem",
     "facebook ceo": "this guy",
-    "jeff bezos": "a hot single in your area",
+    "Jeff Bezos": "a hot single in your area",
     "latest": "final",
     "disrupt": "destroy",
     # "meeting": '',
+    "scientist": "Channing Tatum",
     "scientists": "Channing Tatum and his friends",
     "you won't believe": "I'm really sad about",
 
@@ -83,11 +84,11 @@ WORD_MAP = {
     "international": "local",
     "local": "international",
     "donation": "bribe",
-    "donations": "bribes",
     "GoFundMe": "American Healthcare",
     "hundreds": "like... two (max)",
     "millions": 'an incalculable amount',
     "million": '',
+    "billionaire": "oligarch",
     "billion": 'dozen',
     "students": "literal children",
     # "hackers": "keyboard warriors", # "clickity-clackity hackybois
@@ -100,12 +101,21 @@ WORD_MAP = {
     "interview": "heart-to-heart",
     "database": "diary",
     "monkeypox": "baby fever",
-    "gaslit": "\'gaslit\' (a made-up term)",
-    "gaslighting": "\'gaslighting\' (a made-up term)",
-    "gaslight": "\'gaslight\' (a made-up term)",
     "Kavanaugh": "Beer Enjoyer",
     "member": "fan",
     "Elon Musk": "Grimes\' ex",
     "gasoline": "weed",
-    "gas": "weed"
+    " gas ": " weed "
 }
+
+"""
+These are the terms that map to each other in the replacement filter (see wordmap.py)
+    Keep track of these to avoid re-/un-mapping these terms (which would result in a net-zero change to the text)
+"""
+WORDMAP_SWAP_CASES = {
+    "years", "minutes",
+    "Netflix", "Quibi",
+    "international", "local",
+    "year", "minute",
+}
+

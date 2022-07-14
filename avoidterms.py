@@ -12,4 +12,6 @@ IGNORE_TERMS = [
     "dead",
     "fatally",
     "Ulvade",
+    "massacre",
+    "shooter"
 ]
