@@ -77,6 +77,7 @@ WORD_MAP = {
     "you won't believe": "I'm really sad about",
 
     #     Additional
+    "immigrants": "people",
     "migrants": "people",
     "police": "pigs",
     "Netflix": "Quibi",
