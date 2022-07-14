@@ -33,7 +33,7 @@ def get_twitter_user(user_id=None, username=None, twitter_client=None):
 def parse_twitter_author(twitter_user=None, username=None, twitter_client=None):
     if twitter_user and isinstance(twitter_user, tweepy.User):
         return TweetAuthor(
-            _id=twitter_user.id,
+            author_id=twitter_user.id,
             name=twitter_user.name,
             username=twitter_user.username
         )
@@ -42,7 +42,7 @@ def parse_twitter_author(twitter_user=None, username=None, twitter_client=None):
         if usr and usr.data:
             user = usr.data
             return TweetAuthor(
-                _id=user.id,
+                author_id=user.id,
                 name=user.name,
                 username=user.username
             )
