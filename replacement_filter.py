@@ -31,9 +31,9 @@ def apply_replacement_filter(text: str) -> dict:
             if key in WORDMAP_SWAP_CASES and WORD_MAP[key] in replaced_words_list:
                 continue
             else:
-                result = re.sub(pattern=case_insensitive, repl=WORD_MAP[key], string=result, count=10)
+                result, count = re.subn(pattern=case_insensitive, repl=WORD_MAP[key], string=result)
                 replaced_words_list.append(key)
-                num_replacements += 1
+                num_replacements += count
     result = normalize_str(result)
     return {
         "num_replacements": num_replacements,
