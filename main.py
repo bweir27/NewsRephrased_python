@@ -3,7 +3,7 @@ import datetime
 import time
 
 from helpers.google_helpers import update_suggested_tweet_wks, init_google_drive_clients, complete_refresh_spreadsheets, \
-    update_wordmap_wks
+    update_wordmap_wks, update_stats_wks
 from helpers.helpers import *
 from helpers.mongo_helpers import *
 from helpers.twitter_helpers import init_twitter_client

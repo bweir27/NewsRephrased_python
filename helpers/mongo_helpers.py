@@ -93,6 +93,12 @@ def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
     return res > 0
 
 
+def count_total_in_seen_db(seen_db=None):
+    if seen_db is None:
+        seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+    return seen_db.count_documents({})
+
+
 def count_num_in_seen_db(seen_db, parsed_tweets):
     id_map = list(map(lambda x: str(x.tweet_id), parsed_tweets))
     find_obj = {
@@ -128,6 +134,12 @@ def insert_many_tweets_to_seen_db(seen_db, parsed_tweets) -> list:
 
 
 # ========= Tweet Operations ===========
+
+
+def count_num_eligible_in_db(collection=None):
+    if collection is None:
+        collection = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    return collection.count_documents({})
 
 
 def get_most_recent_tweet_id_from_mongo(mongo_collection, author_id=None) -> str:

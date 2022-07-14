@@ -1,6 +1,7 @@
 import gspread
 from constants import *
-from helpers.mongo_helpers import init_mongo_client, get_num_times_keys_used
+from helpers.mongo_helpers import init_mongo_client, get_num_times_keys_used, count_total_in_seen_db, \
+    count_num_eligible_in_db
 from wordmap import WORD_MAP
 
 
@@ -9,7 +10,8 @@ def init_google_drive_clients():
     sh = gc.open(SPREADSHEET_NAME)
     wordmap_wks = sh.get_worksheet(WORDMAP_WORKSHEET_NUM)
     tweet_suggestion_wks = sh.get_worksheet(SUGGESTION_WORKSHEET_NUM)
-    return [wordmap_wks, tweet_suggestion_wks]
+    stats_wks = sh.get_worksheet(STATS_WORKSHEET_NUM)
+    return [wordmap_wks, tweet_suggestion_wks, stats_wks]
 
 
 def get_first_blank_row(worksheet, show_output: bool = False):
@@ -81,6 +83,21 @@ def update_wordmap_wks(worksheet=None, show_output: bool = False):
     wordmap_wks.update(start_cell, to_add)
     if show_output:
         print('done.')
+
+
+def update_stats_wks(worksheet=None):
+    stats_wks = worksheet
+    if worksheet is None:
+        stats_wks = init_google_drive_clients()[STATS_WORKSHEET_NUM]
+    # get total number of "seen" tweets
+    total_num_seen = count_total_in_seen_db()
+    total_num_eligible = count_num_eligible_in_db()
+    stats_wks.update_acell(STATS_WORKSHEET_NUM_SEEN_CELL, total_num_seen)
+    stats_wks.update_acell(STATS_WORKSHEET_NUM_ELIGIBLE_CELL, total_num_eligible)
+    return {
+        "num_seen": total_num_seen,
+        "num_eligible": total_num_eligible
+    }
 
 
 def format_suggested_wks():
@@ -178,8 +195,10 @@ def update_worksheets(partial_update=True, show_output=False):
     google_clients = init_google_drive_clients()
     wordmap_worksheet = google_clients[WORDMAP_WORKSHEET_NUM]
     suggest_worksheet = google_clients[SUGGESTION_WORKSHEET_NUM]
+    stats_wks = google_clients[STATS_WORKSHEET_NUM]
     update_wordmap_wks(worksheet=wordmap_worksheet, show_output=show_output)
     update_suggested_tweet_wks(worksheet=suggest_worksheet, partial_update=partial_update, show_output=show_output)
+    update_stats_wks(worksheet=stats_wks)
 
 
 def complete_refresh_spreadsheets(show_output=False):
