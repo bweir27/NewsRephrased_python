@@ -1,14 +1,17 @@
 """
-TW//
+TW //
 
-This is the list of words / phrases that, if seen within the text of a tweet,
-will prevent the Tweet from being put through the filter
-(to avoid potentially making 'satire' out of gruesome or triggering situations)
+
+
+
+This is the list of words / phrases that, if found within the text of a tweet,
+will mark the tweet as ineligible and prevent the Tweet from being put through the filter
+(to avoid making 'light' of potentially gruesome or triggering situations)
 
 This list will be regularly updated.
 """
 
-IGNORE_TERMS = [
+BLOCKED_TERMS = {
     "shooting",
     "killed",
     "died",
@@ -30,4 +33,6 @@ IGNORE_TERMS = [
     "anorexic",
     "minor",
     "children",
-]
+    "opioid",
+    "overdose"
+}

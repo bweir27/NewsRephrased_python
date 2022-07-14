@@ -1,5 +1,5 @@
 import re
-from avoidterms import IGNORE_TERMS
+from blocked_terms import BLOCKED_TERMS
 from wordmap import WORD_MAP, WORDMAP_SWAP_CASES
 
 
@@ -13,7 +13,7 @@ def normalize_str(text: str) -> str:
 def apply_replacement_filter(text: str) -> dict:
     lower_text = str(text)
     replaced_words_list = []
-    for c in IGNORE_TERMS:
+    for c in BLOCKED_TERMS:
         if c in lower_text.lower():
             return {
                 "num_replacements": 0,
