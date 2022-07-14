@@ -81,7 +81,7 @@ BASE_URL = "https://twitter.com/"
 MONGO_HOST = 'localhost'
 MONGO_PORT = 27017
 DB_NAME = "news_rephrased"
-DB_TWEET_COLLECTION_NAME = "tweets"
+DB_TWEET_COLLECTION_NAME = "eligible_tweets"
 DB_SEEN_COLLECTION_NAME = "seen_tweets"
 DB_AUTHORS_COLLECTION_NAME = "known_authors"
 
