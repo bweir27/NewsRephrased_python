@@ -180,6 +180,12 @@ def count_num_eligible_in_db(collection=None):
 
 
 def get_most_recent_tweet_id_from_mongo(mongo_collection, author_id=None) -> str:
+    """
+
+    :param mongo_collection:
+    :param author_id: (optional) - the Twitter ID of the target author
+    :return: the Twitter ID of the most recent tweet
+    """
     find_query = {}
     if author_id:
         find_query = {"author.author_id": str(author_id)}
@@ -230,15 +236,24 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
 # ========= Stats / Other Operations ===========
 
 
-def get_num_times_keys_used():
+def get_total_num_replacements():
+    tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    pipeline = [
+        {"$group": {"_id": "num_repl", "count": {"$sum": "$num_replacements"}}},
+    ]
+    agg_res = tweet_db.aggregate(pipeline=pipeline).next()
+    return agg_res
+
+
+def get_key_freq_map():
     """
     Returns a frequency table containing the number of times each key in the wordmap has been used
         -   Note: unused words will not be in the freqTable
     """
     tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
     pipeline = [
-        {"$unwind": "$mapped_keys"},
-        {"$group": {"_id": "$mapped_keys", "count": {"$sum": 1}}},
+        {"$unwind": "$mapped_key_list"},
+        {"$group": {"_id": "$mapped_key_list.key", "count": {"$sum": "$mapped_key_list.freq"}}},
         {"$group": {
             "_id": None,
             "counts": {

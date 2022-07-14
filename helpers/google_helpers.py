@@ -2,7 +2,7 @@ import gspread
 
 from TweetAuthor import TweetAuthor
 from constants import *
-from helpers.mongo_helpers import init_mongo_client, get_num_times_keys_used, count_total_in_seen_db, \
+from helpers.mongo_helpers import init_mongo_client, get_key_freq_map, count_total_in_seen_db, \
     count_num_eligible_in_db, count_seen_eligible_by_author_list
 from wordmap import WORD_MAP
 
@@ -73,7 +73,7 @@ def update_wordmap_wks(worksheet=None, show_output: bool = False):
     to_add = list()
     start_cell = 'A2'
     wordmap_wks = worksheet
-    key_freq_counts = get_num_times_keys_used()
+    key_freq_counts = get_key_freq_map()
     if wordmap_wks is None:
         wordmap_wks = init_google_drive_clients()[SUGGESTION_WORKSHEET_NUM]
     if show_output:
@@ -142,7 +142,7 @@ def format_suggested_wks():
 
 def format_suggested_tweet_worksheet_row(db_tweet):
     source_col = f'{db_tweet["author"]["name"]} (@{db_tweet["author"]["username"]})'
-    replaced_keys = ', '.join(db_tweet["mapped_keys"])
+    replaced_keys = ', '.join([str(x["key"]) for x in db_tweet["mapped_key_list"]])
     return [
         source_col,
         db_tweet["tweet_url"],

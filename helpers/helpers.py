@@ -1,9 +1,10 @@
+import pprint
 import re
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
 from helpers.mongo_helpers import init_mongo_client, get_all_known_authors, insert_parsed_tweets_to_mongodb, \
-    insert_many_tweets_to_seen_db
+    insert_many_tweets_to_seen_db, get_total_num_replacements
 from helpers.twitter_helpers import init_twitter_client
 from replacement_filter import apply_replacement_filter
 
@@ -53,7 +54,7 @@ def get_parsed_tweet_obj(tweet, author: TweetAuthor) -> ParsedTweet:
         modified_text=filterInfo["modified_text"],
         tweet_url=f'{BASE_URL}{author.username}/status/{tweet["id"]}',
         created_at=tweet["created_at"],
-        mapped_keys=filterInfo["replaced_keys"]
+        repl_freq_map=filterInfo["replaced_key_freq"]
     )
     return res
 
@@ -68,7 +69,7 @@ def revisit_seen_tweets(show_output=False):
     twitter_client = init_twitter_client()
     all_seen_tweet_docs = seen_db.find({}).sort("tweet_id", -1)
 
-    # get list of the IDs of the
+    # get list of IDs for all the "seen" tweets
     to_visit_ids = list()
     for t in all_seen_tweet_docs:
         to_visit_ids.append(str(t["tweet_id"]))

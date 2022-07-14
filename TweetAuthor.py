@@ -1,3 +1,6 @@
+from constants import BASE_URL
+
+
 class TweetAuthor:
     def __init__(self, author_id: str or int, name: str, username: str):
         if not isinstance(author_id, str):
@@ -6,6 +9,7 @@ class TweetAuthor:
         self.name = name
         self.username = username
         self.formatted_name = f'{self.name} (@{self.username})'
+        self.url = f'{BASE_URL}{self.username}'
         self.json = self.as_json()
 
     def __str__(self):
@@ -19,5 +23,6 @@ class TweetAuthor:
             "author_id": self.author_id,
             "name": self.name,
             "username": self.username,
-            "formatted": self.formatted_name
+            "formatted": self.formatted_name,
+            "author_url": self.url
         }

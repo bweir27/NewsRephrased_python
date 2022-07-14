@@ -1,11 +1,14 @@
 import datetime
+import pprint
+from functools import reduce
+
 from TweetAuthor import TweetAuthor
 from replacement_filter import apply_replacement_filter
 
 
 class ParsedTweet:
     def __init__(self, author: TweetAuthor, tweet_id: float or str, original_text: str, created_at: datetime.datetime,
-                 tweet_url: str = '', mapped_keys=None, modified_text: str = '', num_replacements: int = 0,
+                 tweet_url: str = '', repl_freq_map: list = None, num_replacements: int = 0, modified_text: str = '',
                  been_posted: bool = False):
         if not isinstance(author, TweetAuthor):
             raise Exception(f'Invalid type for \"author\" (expected TweetAuthor, received {type(author)}')
@@ -13,20 +16,20 @@ class ParsedTweet:
         self.author_id = str(author.author_id)
         self.author = author
         self.tweet_id = str(tweet_id)
-        if mapped_keys is None or len(str(modified_text)) == 0 or int(num_replacements) == 0:
+        if len(str(modified_text)) == 0 or repl_freq_map is None or len(repl_freq_map) == 0:
             filter_info = apply_replacement_filter(str(original_text))
-            mapped_keys = filter_info["replaced_keys"]
             modified_text = filter_info["modified_text"]
             original_text = filter_info["original_text"]
             num_replacements = filter_info["num_replacements"]
-        self.num_replacements = int(num_replacements)
+            repl_freq_map = filter_info["replaced_key_freq"]
+        self.num_replacements = num_replacements
         self.original_text = str(original_text)
         self.modified_text = str(modified_text)
         self.tweet_url = str(tweet_url)
         if not isinstance(created_at, datetime.datetime):
             raise Exception(f'Invalid type for \"created_at\" field: {type(created_at)}')
         self.created_at = created_at
-        self.mapped_keys = mapped_keys
+        self.mapped_key_list = repl_freq_map
         self.posted = been_posted
         self.json = self.as_json()
         self.seen_obj = self.seen_tweet()
@@ -51,8 +54,8 @@ class ParsedTweet:
             "modified_text": str(self.modified_text),
             "tweet_url": str(self.tweet_url),
             "created_at": self.created_at,
-            "mapped_keys": self.mapped_keys,
-            "posted": self.posted
+            "mapped_key_list": self.mapped_key_list,
+            "posted": self.posted,
         }
 
     def seen_tweet(self):

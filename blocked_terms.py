@@ -14,6 +14,7 @@ This list will be regularly updated.
 BLOCKED_TERMS = {
     "shooting",
     "killed",
+    "killing",
     "died",
     "dead",
     "fatally",
