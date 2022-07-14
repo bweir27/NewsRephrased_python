@@ -5,6 +5,7 @@ class TweetAuthor:
         self.author_id = author_id
         self.name = name
         self.username = username
+        self.formatted_name = f'{self.name} (@{self.username})'
         self.json = self.as_json()
 
     def __str__(self):
@@ -17,5 +18,6 @@ class TweetAuthor:
         return {
             "author_id": self.author_id,
             "name": self.name,
-            "username": self.username
+            "username": self.username,
+            "formatted": self.formatted_name
         }

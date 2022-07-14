@@ -93,6 +93,43 @@ def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
     return res > 0
 
 
+def count_seen_eligible_by_author(seen_db=None):
+    if seen_db is None:
+        seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+    pipeline = [
+        {
+            "$match": {
+                "$and": [
+                    {"author": {"$ne": None}},
+                    {"author.author_id": {"$ne": None}}
+                ]
+            }
+        },
+        {
+            "$group": {
+                "_id": "$author.author_id",
+                "name": {"$max": "$author.name"},           # FIXME: There has to be a better way to do this
+                "username": {"$max": "$author.username"},
+                "formatted": {"$max": {"$concat": ["$author.name", " (@", "$author.username", ")"]}},
+                "seen": {"$sum": 1},
+                "eligible": {"$sum": {"$cond": ["$valid_tweet", 1, 0]}}
+            }
+        },
+        {
+            "$sort": {"formatted": 1}   # sort alphabetically
+        }
+    ]
+    res = seen_db.aggregate(pipeline=pipeline)
+    return res
+
+
+def count_seen_eligible_by_author_list(seen_db=None):
+    if seen_db is None:
+        seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+    agg_res = count_seen_eligible_by_author(seen_db)
+    return list([x for x in agg_res])
+
+
 def count_total_in_seen_db(seen_db=None):
     if seen_db is None:
         seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]

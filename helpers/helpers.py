@@ -2,7 +2,8 @@ import re
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
-from helpers.mongo_helpers import init_mongo_client, get_all_known_authors, insert_parsed_tweets_to_mongodb
+from helpers.mongo_helpers import init_mongo_client, get_all_known_authors, insert_parsed_tweets_to_mongodb, \
+    insert_many_tweets_to_seen_db
 from helpers.twitter_helpers import init_twitter_client
 from replacement_filter import apply_replacement_filter
 
@@ -90,6 +91,7 @@ def revisit_seen_tweets(show_output=False):
         tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]), retrieved_tweets.data))
         if show_output:
             print('Inserting...', end=' ')
+        seen_res = insert_many_tweets_to_seen_db(seen_db=seen_db, parsed_tweets=tweet_objs)
         insert_res = insert_parsed_tweets_to_mongodb(tweet_db=tweet_db, parsed_tweets=tweet_objs)
         if show_output:
             print(f'{insert_res["num_skipped"]} skipped.')

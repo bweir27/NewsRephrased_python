@@ -79,7 +79,7 @@ WORD_MAP = {
     #     Additional
     "immigrants": "people",
     "migrants": "people",
-    "police": "pigs",
+    "police": "30-50 Feral Hogs",
     "Netflix": "Quibi",
     "Quibi": "Netflix",
     "international": "local",

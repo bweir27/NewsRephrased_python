@@ -1,7 +1,9 @@
 import gspread
+
+from TweetAuthor import TweetAuthor
 from constants import *
 from helpers.mongo_helpers import init_mongo_client, get_num_times_keys_used, count_total_in_seen_db, \
-    count_num_eligible_in_db
+    count_num_eligible_in_db, count_seen_eligible_by_author_list
 from wordmap import WORD_MAP
 
 
@@ -89,14 +91,22 @@ def update_stats_wks(worksheet=None):
     stats_wks = worksheet
     if worksheet is None:
         stats_wks = init_google_drive_clients()[STATS_WORKSHEET_NUM]
+    # TODO: refactor to just get per-author stats, then reduce() to derive # seen/eligible from there
     # get total number of "seen" tweets
     total_num_seen = count_total_in_seen_db()
+    # get total number of "eligible" tweets
     total_num_eligible = count_num_eligible_in_db()
+    # Get seen vs eligible stats on a per-author basis
+    author_eligible_seen = count_seen_eligible_by_author_list()
+    author_stats = list(map(lambda x: [x["formatted"], x["seen"], x["eligible"]], author_eligible_seen))
+    # Update Stats worksheet page
     stats_wks.update_acell(STATS_WORKSHEET_NUM_SEEN_CELL, total_num_seen)
     stats_wks.update_acell(STATS_WORKSHEET_NUM_ELIGIBLE_CELL, total_num_eligible)
+    stats_wks.update(STATS_WORKSHEET_AUTHOR_SEEN_ELIGIBLE_CELL, author_stats)
     return {
         "num_seen": total_num_seen,
-        "num_eligible": total_num_eligible
+        "num_eligible": total_num_eligible,
+        "author_stats": author_stats
     }
 
 

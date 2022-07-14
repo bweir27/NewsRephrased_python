@@ -57,6 +57,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
     google_clients = init_google_drive_clients()
     map_wks = google_clients[WORDMAP_WORKSHEET_NUM]
     suggest_wks = google_clients[SUGGESTION_WORKSHEET_NUM]
+    stats_wks = google_clients[STATS_WORKSHEET_NUM]
 
     # Set up Twitter
     twitter_client = init_twitter_client()
@@ -93,6 +94,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
             google_clients = init_google_drive_clients()
             map_wks = google_clients[WORDMAP_WORKSHEET_NUM]
             suggest_wks = google_clients[SUGGESTION_WORKSHEET_NUM]
+            stats_wks = google_clients[STATS_WORKSHEET_NUM]
             # Set up Twitter
             twitter_client = init_twitter_client()
 
@@ -108,7 +110,6 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
             # Get User data for Twitter User
             target_user = twitter_client.get_user(username=str(target.username))
 
-            # TODO: Query for paginated results
             # Get recent tweets from this user
             print(f'\tRetrieving new tweets from @{target.username}...', end=' ')
             target_recent_tweets = twitter_client.get_users_tweets(
@@ -126,7 +127,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
             if target_recent_tweets.meta["result_count"] > 0:
                 raw_tweet_objs = list()
                 raw_tweet_objs.extend(target_recent_tweets.data)
-                # pagination
+                # Handle pagination
                 while target_recent_tweets.meta["result_count"] > 0 and "next_token" in target_recent_tweets.meta:
                     next_page_token = target_recent_tweets.meta["next_token"]
                     target_recent_tweets = twitter_client.get_users_tweets(
@@ -198,6 +199,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
                 worksheet=map_wks,
                 show_output=args.show_debug_logs
             )
+            update_stats_wks(worksheet=stats_wks)
             print(f'\t{worksheet_update_num} changes in worksheet')
         session_num_added += num_added_this_run
 
