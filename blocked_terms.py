@@ -9,6 +9,8 @@ will mark the tweet as ineligible and prevent the Tweet from being put through t
 (to avoid making 'light' of potentially gruesome or triggering situations)
 
 This list will be regularly updated.
+
+
 """
 
 BLOCKED_TERMS = {
@@ -17,11 +19,12 @@ BLOCKED_TERMS = {
     "killing",
     "died",
     "dead",
+    " dies",
     "fatally",
     "Ulvade",
     "massacre",
     "shooter",
-    "Jayland Walker",
+
     "rape",
     "rapist",
     "sexual assualt",
@@ -35,5 +38,7 @@ BLOCKED_TERMS = {
     "minor",
     "children",
     "opioid",
-    "overdose"
+    "overdose",
+    "Jayland Walker",
+    "George Floyd",
 }
