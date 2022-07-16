@@ -72,8 +72,8 @@ WORD_MAP = {
     "latest": "final",
     "disrupt": "destroy",
     # "meeting": '',
-    "scientist": "Channing Tatum",
     "scientists": "Channing Tatum and his friends",
+    "scientist": "Channing Tatum",
     "you won't believe": "I'm really sad about",
 
     #     Additional
@@ -108,7 +108,8 @@ WORD_MAP = {
     "gasoline": "weed",
     "gas ": "weed ",
     " gas ": " weed ",
-    "breaking news": "HOLY SHIT"
+    "breaking news": "HOLY SHIT",
+    # "accused":
 }
 
 """
