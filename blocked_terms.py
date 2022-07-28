@@ -21,9 +21,11 @@ BLOCKED_TERMS = {
     "dead",
     " dies",
     "fatally",
-    "Ulvade",
+    "Uvalde",
     "massacre",
     "shooter",
+    "murder",
+    "strangled",
 
     "rape",
     "rapist",

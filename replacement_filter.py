@@ -4,6 +4,15 @@ from blocked_terms import BLOCKED_TERMS
 from wordmap import WORD_MAP, WORDMAP_SWAP_CASES
 
 
+def contains_blocked_term(text: str):
+    for c in BLOCKED_TERMS:
+        regex = re.compile(re.escape(c), re.IGNORECASE)
+        found = re.search(regex, text)
+        if found:
+            return c
+    return None
+
+
 def normalize_str(text: str) -> str:
     res = re.sub(pattern=r'\s+', repl=' ', string=text, count=20)
     res = re.sub(pattern=r'\s+([?.,:;!"](?:\s|$))', repl=r'\1', string=res, count=20)
@@ -12,22 +21,25 @@ def normalize_str(text: str) -> str:
 
 
 def apply_replacement_filter(text: str) -> dict:
-    lower_text = str(text)
+    cpy_text = str(text)
     replaced_key_set = set()
     replaced_key_freq_lst = list()
-    for c in BLOCKED_TERMS:
-        if c in lower_text.lower():
-            return {
-                "num_replacements": 0,
-                "original_text": f'AVOID: "{c}"',
-                "modified_text": f'AVOID: "{c}"',
-                "replaced_key_freq": replaced_key_freq_lst
-            }
+    has_blocked = contains_blocked_term(text)
+    if has_blocked:
+        return {
+            "num_replacements": 0,
+            "original_text": f'AVOID: "{has_blocked}"',
+            "modified_text": f'AVOID: "{has_blocked}"',
+            "replaced_key_freq": replaced_key_freq_lst
+        }
     num_replacements = 0
-    result = lower_text
+    result = cpy_text
+    # replace words
     for key in WORD_MAP:
         case_insensitive = re.compile(re.escape(key), re.IGNORECASE)
         found = re.search(case_insensitive, result)
+        # TODO: split input into [] of string seperated by \s+, check each index, track which ones have been swapped, join(),
+        #       then check for double spaces (fixes having to check word_swap_cases and nested matched
         if found:
             # Prevent re-swapping
             if key in WORDMAP_SWAP_CASES and WORD_MAP[key] in replaced_key_set:

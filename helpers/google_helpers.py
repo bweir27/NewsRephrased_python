@@ -155,13 +155,13 @@ def format_suggested_tweet_worksheet_row(db_tweet):
     ]
 
 
-def update_suggested_tweet_wks(worksheet=None, partial_update: bool = True, show_output: bool = False) -> int:
+def update_suggested_tweet_wks(worksheet=None, partial_update: bool = True, show_output: bool = False, use_prod: bool = False) -> int:
     suggest_wks = worksheet
     start_cell = 'A2'
     to_add = list()
 
     # Connect to tweets DB
-    db = init_mongo_client()
+    db = init_mongo_client(use_prod=use_prod)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_db = db[DB_SEEN_COLLECTION_NAME]
 

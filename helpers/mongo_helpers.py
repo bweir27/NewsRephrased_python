@@ -1,14 +1,20 @@
 from pymongo import MongoClient
+
+import secrets
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
+from secrets import *
 
 
 # =============== SETUP OPERATIONS =========
 
 
-def init_mongo_client():
-    mongo_client = MongoClient(MONGO_HOST, MONGO_PORT)
+def init_mongo_client(use_prod=False):
+    host = MONGO_HOST
+    if use_prod:
+        host = secrets.MONGO_ATLAS_CONNECTION_STRING
+    mongo_client = MongoClient(host)
     db = mongo_client[DB_NAME]
     return db
 
@@ -60,14 +66,14 @@ def insert_author_into_db(parsed_author: TweetAuthor, author_db=None):
 
 # ========= SEEN Tweet Operations ===========
 
-def get_oldest_seen_tweet_id_mongo():
-    seen_tweet_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+def get_oldest_seen_tweet_id_mongo(use_prod: bool = False):
+    seen_tweet_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
     min_id = seen_tweet_db.find({}).sort("tweet_id", 1).limit(1)[0]
     return str(min_id["tweet_id"])
 
 
-def get_most_recent_seen_tweet_id_mongo(author_id=None):
-    seen_tweet_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+def get_most_recent_seen_tweet_id_mongo(author_id=None, use_prod: bool = False):
+    seen_tweet_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
     find_query = {}
     if author_id:
         auth_id = str(author_id)
@@ -75,7 +81,8 @@ def get_most_recent_seen_tweet_id_mongo(author_id=None):
         #     Ensure at least one tweet from this author has been seen before
         num_seen = seen_tweet_db.count_documents(find_query)
         if num_seen is None or num_seen <= 0:
-            return get_oldest_seen_tweet_id_mongo()
+            #     TODO: handle empty seen tweet DB
+            return get_oldest_seen_tweet_id_mongo(use_prod=use_prod)
     max_id = seen_tweet_db.find(find_query).sort("tweet_id", -1)[0]
     return str(max_id["tweet_id"])
 
@@ -93,9 +100,9 @@ def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
     return res > 0
 
 
-def count_seen_eligible_by_author(seen_db=None):
+def count_seen_eligible_by_author(seen_db=None, use_prod: bool = False):
     if seen_db is None:
-        seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+        seen_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
     pipeline = [
         {
             "$match": {
@@ -123,16 +130,16 @@ def count_seen_eligible_by_author(seen_db=None):
     return res
 
 
-def count_seen_eligible_by_author_list(seen_db=None):
+def count_seen_eligible_by_author_list(seen_db=None, use_prod: bool = False):
     if seen_db is None:
-        seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+        seen_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
     agg_res = count_seen_eligible_by_author(seen_db)
     return list([x for x in agg_res])
 
 
-def count_total_in_seen_db(seen_db=None):
+def count_total_in_seen_db(seen_db=None, use_prod: bool = False):
     if seen_db is None:
-        seen_db = init_mongo_client()[DB_SEEN_COLLECTION_NAME]
+        seen_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
     return seen_db.count_documents({})
 
 
@@ -173,9 +180,9 @@ def insert_many_tweets_to_seen_db(seen_db, parsed_tweets) -> list:
 # ========= Tweet Operations ===========
 
 
-def count_num_eligible_in_db(collection=None):
+def count_num_eligible_in_db(collection=None, use_prod: bool = False):
     if collection is None:
-        collection = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+        collection = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
     return collection.count_documents({})
 
 
@@ -236,8 +243,8 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
 # ========= Stats / Other Operations ===========
 
 
-def get_total_num_replacements():
-    tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+def get_total_num_replacements(use_prod: bool = False):
+    tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
     pipeline = [
         {"$group": {"_id": "num_repl", "count": {"$sum": "$num_replacements"}}},
     ]
@@ -245,12 +252,12 @@ def get_total_num_replacements():
     return agg_res
 
 
-def get_key_freq_map():
+def get_key_freq_map(use_prod: bool = False):
     """
     Returns a frequency table containing the number of times each key in the wordmap has been used
         -   Note: unused words will not be in the freqTable
     """
-    tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
     pipeline = [
         {"$unwind": "$mapped_key_list"},
         {"$group": {"_id": "$mapped_key_list.key", "count": {"$sum": "$mapped_key_list.freq"}}},

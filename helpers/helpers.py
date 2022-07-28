@@ -59,9 +59,9 @@ def get_parsed_tweet_obj(tweet, author: TweetAuthor) -> ParsedTweet:
     return res
 
 
-def revisit_seen_tweets(show_output=False):
+def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     # refresh Mongo connections
-    db = init_mongo_client()
+    db = init_mongo_client(use_prod=use_prod)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_db = db[DB_SEEN_COLLECTION_NAME]
     tweet_db.drop()
@@ -104,25 +104,25 @@ def revisit_seen_tweets(show_output=False):
 
 
 def hours_to_seconds(num_hours: float = 1.0) -> float:
-    num_seconds = round(num_hours * 60 * 60, 2)
+    num_seconds = round(num_hours * SECONDS_PER_HOUR, 2)
     if num_seconds < MIN_INTERVAL_SECONDS:
         raise Exception(f'Interval must be longer than {MIN_INTERVAL_SECONDS}')
     return num_seconds
 
 
 def minutes_to_seconds(num_minutes: int = DEFAULT_INTERVAL_MINUTES) -> float:
-    num_seconds = round(num_minutes * 60, 2)
+    num_seconds = round(num_minutes * SECONDS_PER_MINUTE, 2)
     if num_seconds < MIN_INTERVAL_SECONDS:
         raise Exception(f'Interval must be longer than {MIN_INTERVAL_SECONDS}')
     return num_seconds
 
 
 def seconds_to_minutes(num_seconds: float) -> float:
-    num_minutes = round((num_seconds / 60), 3)
+    num_minutes = round((num_seconds / SECONDS_PER_MINUTE), 3)
     return num_minutes
 
 
 def seconds_to_hours(num_seconds):
-    num_hours = round((num_seconds / 60) / 60, 3)
+    num_hours = round(num_seconds / SECONDS_PER_HOUR, 3)
     return num_hours
 
