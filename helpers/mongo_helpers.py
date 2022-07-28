@@ -8,7 +8,6 @@ from constants import *
 
 # =============== SETUP OPERATIONS =========
 
-
 def init_mongo_client(use_prod=False):
     host = MONGO_HOST
     if use_prod:
