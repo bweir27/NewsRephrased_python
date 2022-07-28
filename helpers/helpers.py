@@ -1,5 +1,7 @@
 import pprint
 import re
+import time
+
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
@@ -87,6 +89,7 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
                                                      tweet_fields=["id", "text", "created_at"],
                                                      user_fields=["username"]
                                                      )
+        time.sleep(2)
         if show_output:
             print(f'{len(retrieved_tweets.data)} Tweets retrieved.')
         tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]), retrieved_tweets.data))

@@ -24,6 +24,7 @@ class ParsedTweet:
             repl_freq_map = filter_info["replaced_key_freq"]
         self.num_replacements = num_replacements
         self.original_text = str(original_text)
+        # TODO: handle len(modified_text) > TWEET_CHAR_LIMIT
         self.modified_text = str(modified_text)
         self.tweet_url = str(tweet_url)
         if not isinstance(created_at, datetime.datetime):

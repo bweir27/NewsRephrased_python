@@ -90,6 +90,7 @@ HEADER_ROW_BORDER = {
 
 # ======== Twitter constants ========
 BASE_URL = "https://twitter.com/"
+TWEET_CHAR_LIMIT = 280
 
 
 # ======== MongoDB Constants ========

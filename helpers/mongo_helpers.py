@@ -4,7 +4,6 @@ import secrets
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
-from secrets import *
 
 
 # =============== SETUP OPERATIONS =========
