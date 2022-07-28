@@ -13,7 +13,9 @@ This list will be regularly updated.
 
 """
 
-BLOCKED_TERMS = {
+BLOCKED_TERMS = [
+    "shot",
+    "gunshot",
     "shooting",
     "killed",
     "killing",
@@ -26,7 +28,6 @@ BLOCKED_TERMS = {
     "shooter",
     "murder",
     "strangled",
-
     "rape",
     "rapist",
     "sexual assualt",
@@ -43,4 +44,4 @@ BLOCKED_TERMS = {
     "overdose",
     "Jayland Walker",
     "George Floyd",
-}
+]

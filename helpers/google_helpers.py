@@ -1,10 +1,10 @@
 import gspread
-
 from TweetAuthor import TweetAuthor
 from constants import *
 from helpers.mongo_helpers import init_mongo_client, get_key_freq_map, count_total_in_seen_db, \
     count_num_eligible_in_db, count_seen_eligible_by_author_list
 from wordmap import WORD_MAP
+from blocked_terms import BLOCKED_TERMS
 
 
 def init_google_drive_clients():
@@ -13,7 +13,8 @@ def init_google_drive_clients():
     wordmap_wks = sh.get_worksheet(WORDMAP_WORKSHEET_NUM)
     tweet_suggestion_wks = sh.get_worksheet(SUGGESTION_WORKSHEET_NUM)
     stats_wks = sh.get_worksheet(STATS_WORKSHEET_NUM)
-    return [wordmap_wks, tweet_suggestion_wks, stats_wks]
+    blocked_term_wks = sh.get_worksheet(BLOCKED_TERM_WORKSHEET_NUM)
+    return [wordmap_wks, tweet_suggestion_wks, stats_wks, blocked_term_wks]
 
 
 def get_first_blank_row(worksheet, show_output: bool = False):
@@ -67,6 +68,23 @@ def unseen_tweet(worksheet, tweet, max_seen_id="0") -> bool:
 
 def filter_seen_tweets(worksheet, tweet, max_seen_id="0"):
     return unseen_tweet(worksheet=worksheet, tweet=tweet, max_seen_id=max_seen_id)
+
+
+def update_blocked_term_wks(worksheet=None, show_output: bool = False):
+    to_add = list()
+    start_cell = BLOCKED_TERM_WORKSHEET_START_CELL
+    blocked_wks = worksheet
+    if blocked_wks is None:
+        blocked_wks = init_google_drive_clients()[BLOCKED_TERM_WORKSHEET_NUM]
+    to_add = list(map(lambda x: [str(f"\"{x}\"")], list(BLOCKED_TERMS)))
+    if show_output:
+        print(f'Blocked terms:\t{BLOCKED_TERMS}')
+        print(f'# blocked terms: {len(to_add)}')
+        print('Updating Blocked Term Worksheet...')
+    worksheet.batch_clear([f'{start_cell}:B{len(to_add) + 30}'])
+    blocked_wks.update(start_cell, to_add)
+    if show_output:
+        print('Done.')
 
 
 def update_wordmap_wks(worksheet=None, show_output: bool = False):
@@ -206,9 +224,11 @@ def update_worksheets(partial_update=True, show_output=False):
     wordmap_worksheet = google_clients[WORDMAP_WORKSHEET_NUM]
     suggest_worksheet = google_clients[SUGGESTION_WORKSHEET_NUM]
     stats_wks = google_clients[STATS_WORKSHEET_NUM]
+    blocked_wks = google_clients[BLOCKED_TERM_WORKSHEET_NUM]
     update_wordmap_wks(worksheet=wordmap_worksheet, show_output=show_output)
     update_suggested_tweet_wks(worksheet=suggest_worksheet, partial_update=partial_update, show_output=show_output)
     update_stats_wks(worksheet=stats_wks)
+    update_blocked_term_wks(worksheet=blocked_wks, show_output=show_output)
 
 
 def complete_refresh_spreadsheets(show_output=False):
