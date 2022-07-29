@@ -61,12 +61,55 @@ def get_parsed_tweet_obj(tweet, author: TweetAuthor) -> ParsedTweet:
     return res
 
 
+def drop_unposted_tweets(use_prod: bool = False):
+    db = init_mongo_client(use_prod=use_prod)
+    tweet_db = db[DB_TWEET_COLLECTION_NAME]
+    posted_res = tweet_db.find({"posted": True}).sort("tweet_id", 1)
+    posted_ids = list()
+    posted_text = set()
+    for t in posted_res:
+        posted_ids.append(t["tweet_id"])
+        posted_text.add(t["modified_text"])
+    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"tweet_id": {"$nin": posted_ids}}]})
+    num_remaining = tweet_db.count_documents({})
+
+
+def drop_eligible_duplicates(use_prod: bool = False):
+    db = init_mongo_client(use_prod=use_prod)
+    tweet_db = db[DB_TWEET_COLLECTION_NAME]
+    seen_db = db[DB_SEEN_COLLECTION_NAME]
+    # get all posted tweets
+    posted_res = tweet_db.find({"posted": True}).sort("tweet_id", 1)
+    posted_ids = set()
+    posted_text = set()
+    for t in posted_res:
+        posted_ids.add(t["tweet_id"])
+        posted_text.add(t["modified_text"])
+    # get all unposted tweets
+    unposted_res = tweet_db.find().sort("tweet_id", 1)
+
+    seen = set()
+    unposted_mod_text = set()
+    u_ids = list()
+    for t in unposted_res:
+        mod_txt = t["modified_text"]
+        seen.add(t["tweet_id"])
+        if mod_txt not in unposted_mod_text and mod_txt not in posted_text:
+            unposted_mod_text.add(mod_txt)
+            u_ids.append(t["tweet_id"])
+    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"tweet_id": {"$nin": u_ids}}]})
+    num_remaining = tweet_db.count_documents({})
+
+
 def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     # refresh Mongo connections
     db = init_mongo_client(use_prod=use_prod)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_db = db[DB_SEEN_COLLECTION_NAME]
-    tweet_db.drop()
+    drop_unposted_tweets()
+    num_start = tweet_db.count_documents({})
+    if show_output:
+        print(f"startNum: {num_start}")
     # refresh Twitter client
     twitter_client = init_twitter_client()
     all_seen_tweet_docs = seen_db.find({}).sort("tweet_id", -1)
@@ -75,11 +118,15 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     to_visit_ids = list()
     for t in all_seen_tweet_docs:
         to_visit_ids.append(str(t["tweet_id"]))
+    # have to split list into segments of 100 because twitter API only allows 100 at a time
     split_size = 100
     a_splitted = [to_visit_ids[x:x + split_size] for x in range(0, len(to_visit_ids), split_size)]
+
     known_authors_res = get_all_known_authors()
     authors = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
     auth_dict = {}
+    total_num_skipped = 0
+    total_num_retrieved = 0
     for a in authors:
         auth_dict[str(a.author_id)] = a
 
@@ -89,19 +136,24 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
                                                      tweet_fields=["id", "text", "created_at"],
                                                      user_fields=["username"]
                                                      )
-        time.sleep(2)
+        total_num_retrieved += len(retrieved_tweets.data)
         if show_output:
             print(f'{len(retrieved_tweets.data)} Tweets retrieved.')
         tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]), retrieved_tweets.data))
         if show_output:
-            print('Inserting...', end=' ')
+            print('Inserting...')
         seen_res = insert_many_tweets_to_seen_db(seen_db=seen_db, parsed_tweets=tweet_objs)
         insert_res = insert_parsed_tweets_to_mongodb(tweet_db=tweet_db, parsed_tweets=tweet_objs)
+        total_num_skipped += insert_res["num_skipped"]
         if show_output:
             print(f'{insert_res["num_skipped"]} skipped.')
     if show_output:
         print('Done.')
-
+        print(f"startNum: {num_start}")
+        print(f"Total retrieved: {total_num_retrieved}")
+        print(f"Total skipped: {total_num_skipped}")
+        print(f"Net: {total_num_retrieved - total_num_skipped}")
+    drop_eligible_duplicates()
 
 # =============== UNIT CONVERSIONS  =========
 

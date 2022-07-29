@@ -186,7 +186,6 @@ def count_num_eligible_in_db(collection=None, use_prod: bool = False):
 
 def get_most_recent_tweet_id_from_mongo(mongo_collection, author_id=None) -> str:
     """
-
     :param mongo_collection:
     :param author_id: (optional) - the Twitter ID of the target author
     :return: the Twitter ID of the most recent tweet
@@ -221,7 +220,9 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
     for t in parsed_tweets:
         if not isinstance(t, ParsedTweet):
             raise Exception(f'Invalid Tweet Object: {t}')
-        if t.num_replacements < 1:
+        already_posted = tweet_db.count_documents({"$and": [{"tweet_id": t.tweet_id}, {"posted": True}]})
+        already_seen = tweet_db.count_documents({"modified_text": t.modified_text})
+        if t.num_replacements < 1 or already_posted > 0 or already_seen > 0:
             num_skipped += 1
             continue
         update_arg = {
@@ -236,6 +237,24 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
         "num_skipped": num_skipped,
         "res_list": res_list
     }
+
+
+def get_mongo_tweet_by_id(tweet_id: str, tweet_db=None):
+    if tweet_db is None:
+        tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    found_tweet = tweet_db.find_one({"tweet_id": str(tweet_id)})
+    return found_tweet
+
+
+def mark_tweet_as_posted(tweet_id: str, tweet_db=None):
+    if tweet_db is None:
+        tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    found_tweet = tweet_db.find_one({"tweet_id": str(tweet_id)})
+    if found_tweet and not found_tweet["posted"]:
+        t_id = found_tweet["tweet_id"]
+        update_res = tweet_db.update_one(filter={"tweet_id": str(t_id)}, update={"$set": {"posted": True}})
+        return True
+    return False
 
 
 # ========= Stats / Other Operations ===========
@@ -271,6 +290,46 @@ def get_key_freq_map(use_prod: bool = False):
         {"$replaceRoot": {
             "newRoot": {"$arrayToObject": "$counts"}
         }}
+    ]
+    counts = tweet_db.aggregate(pipeline=pipeline).next()
+    return counts
+
+
+def get_num_tweets_posted(use_prod:bool = False):
+    tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
+    return tweet_db.count_documents({"posted": True})
+
+
+# def get_num_tweets_posted_for_author(use_prod: bool = False):
+#     tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
+#     return tweet_db.count_documents({})
+
+
+def get_num_tweets_posted_per_author(use_prod: bool = False):
+    tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
+    pipeline = [
+        {
+            "$match": {"posted": True}
+        },
+        {
+            "$group": {"_id": "$author.formatted", "count": {"$sum": 1}}
+        },
+        {
+            "$group": {
+                "_id": None,
+                "counts": {
+                    "$push": {
+                        "k": "$_id",
+                        "v": "$count"
+                    }
+                }
+            }
+        },
+        {
+            "$replaceRoot": {
+                "newRoot": {"$arrayToObject": "$counts"}
+            }
+        }
     ]
     counts = tweet_db.aggregate(pipeline=pipeline).next()
     return counts

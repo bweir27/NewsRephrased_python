@@ -65,7 +65,7 @@ WORD_MAP = {
     "behind the headline": "beyond the grave",
     "email": "poem",
     "facebook post": "poem",
-    "tweets": "screams into pillow",
+    "tweets": "screams into a pillow",
     "tweet": "poem",
     "facebook ceo": "this guy",
     "Jeff Bezos": "a hot single in your area",
@@ -109,7 +109,7 @@ WORD_MAP = {
     "gas ": "weed ",
     " gas ": " weed ",
     "breaking news": "HOLY SHIT",
-    # "accused":
+    "yacht": "canoe",
 }
 
 """

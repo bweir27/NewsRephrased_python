@@ -4,6 +4,13 @@ from blocked_terms import BLOCKED_TERMS
 from wordmap import WORD_MAP, WORDMAP_SWAP_CASES
 
 
+def remove_url_from_tweet_text(txt: str) -> str:
+    url_idx = txt.find("http")
+    if url_idx > 0:
+        return txt[0:url_idx].strip()
+    return txt.strip()
+
+
 def contains_blocked_term(text: str):
     for c in BLOCKED_TERMS:
         regex = re.compile(re.escape(c), re.IGNORECASE)
@@ -14,10 +21,10 @@ def contains_blocked_term(text: str):
 
 
 def normalize_str(text: str) -> str:
-    res = re.sub(pattern=r'\s+', repl=' ', string=text, count=20)
-    res = re.sub(pattern=r'\s+([?.,:;!"](?:\s|$))', repl=r'\1', string=res, count=20)
-    res = res.strip()
-    return res
+    res = remove_url_from_tweet_text(text)
+    res = re.sub(pattern=r'\s+', repl=' ', string=res)
+    res = re.sub(pattern=r'\s+([?.,:;!"](?:\s|$))', repl=r'\1', string=res)
+    return res.strip()
 
 
 def apply_replacement_filter(text: str) -> dict:
