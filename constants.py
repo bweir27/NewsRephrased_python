@@ -46,6 +46,7 @@ STATS_WORKSHEET_NUM_SEEN_CELL = 'B2'
 STATS_WORKSHEET_NUM_ELIGIBLE_CELL = 'B3'
 STATS_WORKSHEET_AUTHOR_SEEN_ELIGIBLE_CELL = 'D3'
 STATS_WKS_TOTAL_REPL_CELL = 'B4'
+STATS_WKS_TOTAL_POSTED_CELL = 'B5'
 BLOCKED_TERM_WORKSHEET_START_CELL = 'A13'
 SUGGESTION_WORKSHEET_STARTROW = 1
 SUGGESTION_HEADER_ROW = [
@@ -57,6 +58,7 @@ SUGGESTION_HEADER_ROW = [
     "Replaced Words",
     "Date Posted",
     "TweetID",
+    "Posted?"
 ]
 
 SUGGESTION_COL_VALS = {
@@ -68,6 +70,7 @@ SUGGESTION_COL_VALS = {
     "mapped_keys": 'F',
     "tweet_date": 'G',
     "tweet_id": 'H',
+    "posted": "I"
 }
 
 """

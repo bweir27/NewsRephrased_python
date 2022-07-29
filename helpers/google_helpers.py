@@ -2,7 +2,8 @@ import gspread
 from TweetAuthor import TweetAuthor
 from constants import *
 from helpers.mongo_helpers import init_mongo_client, get_key_freq_map, count_total_in_seen_db, \
-    count_num_eligible_in_db, count_seen_eligible_by_author_list
+    count_num_eligible_in_db, count_seen_eligible_by_author_list, get_num_tweets_posted, \
+    get_num_tweets_posted_per_author
 from wordmap import WORD_MAP
 from blocked_terms import BLOCKED_TERMS
 
@@ -114,16 +115,21 @@ def update_stats_wks(worksheet=None):
     total_num_seen = count_total_in_seen_db()
     # get total number of "eligible" tweets
     total_num_eligible = count_num_eligible_in_db()
+    # Get total number of tweets posted
+    total_num_posted = get_num_tweets_posted()
     # Get seen vs eligible stats on a per-author basis
     author_eligible_seen = count_seen_eligible_by_author_list()
-    author_stats = list(map(lambda x: [x["formatted"], x["seen"], x["eligible"]], author_eligible_seen))
+    author_posted = get_num_tweets_posted_per_author()
+    author_stats = list(map(lambda x: [x["formatted"], x["seen"], x["eligible"], author_posted[x["formatted"]]], author_eligible_seen))
     # Update Stats worksheet page
     stats_wks.update_acell(STATS_WORKSHEET_NUM_SEEN_CELL, total_num_seen)
     stats_wks.update_acell(STATS_WORKSHEET_NUM_ELIGIBLE_CELL, total_num_eligible)
+    stats_wks.update_acell(STATS_WKS_TOTAL_POSTED_CELL, total_num_posted)
     stats_wks.update(STATS_WORKSHEET_AUTHOR_SEEN_ELIGIBLE_CELL, author_stats)
     return {
         "num_seen": total_num_seen,
         "num_eligible": total_num_eligible,
+        "num_posted": total_num_posted,
         "author_stats": author_stats
     }
 
@@ -170,6 +176,7 @@ def format_suggested_tweet_worksheet_row(db_tweet):
         replaced_keys,
         str(db_tweet["created_at"]),
         db_tweet["tweet_id"],
+        bool(db_tweet["posted"])
     ]
 
 
