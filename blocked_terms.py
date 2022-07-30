@@ -37,6 +37,7 @@ BLOCKED_TERMS = [
     "raping",
     "sexual assault",
     "sexually abuse",
+    "sexually assault",
     "sexual abuse",
     "sexual misconduct",
     "suicide",
