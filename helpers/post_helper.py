@@ -15,6 +15,8 @@ def format_reply_text(mongo_tweet_obj):
     mapped_keys = list(map(lambda x: x["key"], mongo_tweet_obj["mapped_key_list"]))
     for k in mapped_keys:
         reply_txt += f"\n\"{k}\" -> \"{WORD_MAP[k]}\""
+    #     append part of ID to avoid posting exact duplicate tweets
+    #       (which get blocked by Twitter's API)
     reply_txt += f"\n(id: {str(mongo_tweet_obj['tweet_id'])[-4:]})"
     return reply_txt
 
@@ -41,6 +43,7 @@ def post_tweet(tweet, show_output: bool = False):
             reply_text = format_reply_text(to_quote)
             if show_output:
                 print(f"\"{reply_text}\"")
+                print(f"Response len:\t{len(reply_text)}")
             reply_res = twitter_client.create_tweet(
                 text=reply_text,
                 in_reply_to_tweet_id=t_res.data["id"]

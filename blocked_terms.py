@@ -52,4 +52,5 @@ BLOCKED_TERMS = [
     "Jayland Walker",
     "George Floyd",
     "hate crime",
+    "lynch",
 ]
