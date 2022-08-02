@@ -1,11 +1,15 @@
 import argparse
 import datetime
+import logging
+import signal
+import threading
 import time
 import tweepy
 from helpers.google_helpers import update_suggested_tweet_wks, init_google_drive_clients, complete_refresh_spreadsheets, \
     update_wordmap_wks, update_stats_wks
 from helpers.helpers import *
 from helpers.mongo_helpers import *
+from helpers.post_helper import post_tweet
 from helpers.twitter_helpers import init_twitter_client, get_user_recent_tweets
 from constants import *
 
@@ -40,10 +44,46 @@ seen_tweet_db = db[DB_SEEN_COLLECTION_NAME]
 authors_db = db[DB_AUTHORS_COLLECTION_NAME]
 
 session_num_added = 0
+exit_threads = threading.Event()
 
 
 def print_bar():
     print(f'\n {"=" * 50}\n')
+
+
+def quit_threads(signo, _frame):
+    print("Interrupted by %d, shutting down" % signo)
+    exit_threads.set()
+
+
+def post_queue_listener(name):
+    logging.info(f"POST_Q_LISTENER:\t{name}")
+    num_runs = 1
+    show_output = args.show_debug_logs
+    while not exit_threads.is_set():
+        logging.info(f"Thread {name}: {num_runs}")
+        #  Get first tweet from Q
+        post_q = init_mongo_client()[DB_POST_Q_COLLECTION_NAME]
+        # first, check if empty
+        num_docs = post_q.count_documents(filter={"posted": False})
+        if num_docs > 0:
+            #  Get earliest in Q
+            earliest_res = post_q.find({"posted": False}).sort("_id", 1)
+            if show_output:
+                print(f'\nEarliest Res: {earliest_res}')
+            earliest = earliest_res.next()
+            if show_output:
+                print(earliest["modified_text"])
+            post_tweet(earliest, show_output=show_output)
+            #     remove from post Q
+            delete_res = post_q.delete_one({"tweet_id": earliest["tweet_id"]})
+            if show_output:
+                print(delete_res.raw_result)
+        next_post_run_start = datetime.datetime.now() + datetime.timedelta(seconds=(SECONDS_PER_MINUTE * 15))
+        logging.info(f'The next POST run will begin in {POST_INTERVAL_MINUTES} minutes (at approx:\t{str(next_post_run_start)})\n')
+        exit_threads.wait(SECONDS_PER_MINUTE * POST_INTERVAL_MINUTES)
+        num_runs += 1
+    logging.info("Thread %s: finished", name)
 
 
 def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
@@ -77,7 +117,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         for t in targets:
             print(t)
 
-    time.sleep(2)
+    exit_threads.wait(2)
     run_number = 1
     global session_num_added
     session_start_time = datetime.datetime.now()
@@ -85,7 +125,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
     num_hours = seconds_to_hours(time_interval_seconds)
     print(f'Ready. Parser will run every {int(num_minutes)} minutes (approx. every {num_hours} hrs)')
     print_bar()
-    while True:
+    while not exit_threads.is_set():
         # refresh connections
         if run_number > 1:
             # Refresh MongoDB connections
@@ -193,7 +233,8 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         print(f'The next run will begin in {int(num_minutes)} minutes (at approx:\t{str(next_run_start)})')
         print_bar()
         run_number += 1
-        time.sleep(time_interval_seconds)
+        exit_threads.wait(time_interval_seconds)
+        # time.sleep(time_interval_seconds)
 
 
 if __name__ == '__main__':
@@ -216,9 +257,21 @@ if __name__ == '__main__':
             google_elapsed_time = google_end_time - google_start_time
             print(f'Done ({google_elapsed_time}).')
 
+        # setup logging & threads
+        info_log_format = "%(asctime)s: %(message)s"
+        logging.basicConfig(format=info_log_format, level=logging.INFO, datefmt="%H:%M:%S")
+        logging.info("Main    : before creating thread")
+        for sig in ('TERM', 'HUP', 'INT'):
+            signal.signal(getattr(signal, 'SIG' + sig), quit_threads)
+        q_listener = threading.Thread(target=post_queue_listener, args=("post_queue",))
+        # parser = threading.Thread(target=run_tweet_parser, args=(run_interval,))
+        q_listener.start()
+        # parser.start()
         run_tweet_parser(time_interval_seconds=run_interval)
-        # TODO: Post Tweet via twitter API
+        q_listener.join()
+
     except KeyboardInterrupt:
+        logging.info("Except Main    : all done")
         print('\n\nInterrupted')
     finally:
         print(f'Total Tweets added this session:\t{session_num_added}')

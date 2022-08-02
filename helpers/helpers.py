@@ -5,6 +5,7 @@ import time
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
+from helpers.google_helpers import mark_tweet_as_posted_on_wks
 from helpers.mongo_helpers import init_mongo_client, get_all_known_authors, insert_parsed_tweets_to_mongodb, \
     insert_many_tweets_to_seen_db, get_total_num_replacements
 from helpers.twitter_helpers import init_twitter_client
@@ -64,13 +65,13 @@ def get_parsed_tweet_obj(tweet, author: TweetAuthor) -> ParsedTweet:
 def drop_unposted_tweets(use_prod: bool = False):
     db = init_mongo_client(use_prod=use_prod)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
-    posted_res = tweet_db.find({"posted": True}).sort("tweet_id", 1)
+    posted_res = tweet_db.find({"posted": True}).sort("_id", 1)
     posted_ids = list()
     posted_text = set()
     for t in posted_res:
-        posted_ids.append(t["tweet_id"])
+        posted_ids.append(t["_id"])
         posted_text.add(t["modified_text"])
-    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"tweet_id": {"$nin": posted_ids}}]})
+    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"_id": {"$nin": posted_ids}}]})
     num_remaining = tweet_db.count_documents({})
 
 
@@ -79,25 +80,25 @@ def drop_eligible_duplicates(use_prod: bool = False):
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_db = db[DB_SEEN_COLLECTION_NAME]
     # get all posted tweets
-    posted_res = tweet_db.find({"posted": True}).sort("tweet_id", 1)
+    posted_res = tweet_db.find({"posted": True}).sort("_id", 1)
     posted_ids = set()
     posted_text = set()
     for t in posted_res:
-        posted_ids.add(t["tweet_id"])
+        posted_ids.add(t["_id"])
         posted_text.add(t["modified_text"])
     # get all unposted tweets
-    unposted_res = tweet_db.find().sort("tweet_id", 1)
+    unposted_res = tweet_db.find().sort("_id", 1)
 
     seen = set()
     unposted_mod_text = set()
     u_ids = list()
     for t in unposted_res:
         mod_txt = t["modified_text"]
-        seen.add(t["tweet_id"])
+        seen.add(t["_id"])
         if mod_txt not in unposted_mod_text and mod_txt not in posted_text:
             unposted_mod_text.add(mod_txt)
-            u_ids.append(t["tweet_id"])
-    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"tweet_id": {"$nin": u_ids}}]})
+            u_ids.append(t["_id"])
+    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"_id": {"$nin": u_ids}}]})
     num_remaining = tweet_db.count_documents({})
 
 
@@ -112,7 +113,7 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
         print(f"startNum: {num_start}")
     # refresh Twitter client
     twitter_client = init_twitter_client()
-    all_seen_tweet_docs = seen_db.find({}).sort("tweet_id", -1)
+    all_seen_tweet_docs = seen_db.find({}, {"_id": 1, "tweet_id": 1}).sort("_id", -1)
 
     # get list of IDs for all the "seen" tweets
     to_visit_ids = list()
@@ -154,6 +155,20 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
         print(f"Total skipped: {total_num_skipped}")
         print(f"Net: {total_num_retrieved - total_num_skipped}")
     drop_eligible_duplicates()
+
+
+def mark_tweet_as_posted(tweet_id: str, tweet_db=None):
+    if tweet_db is None:
+        tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+    found_tweet = tweet_db.find_one({"_id": str(tweet_id)})
+    if found_tweet and not found_tweet["posted"]:
+        t_id = found_tweet["_id"]
+        update_res = tweet_db.update_one(filter={"_id": str(t_id)}, update={"$set": {"posted": True}})
+        # Update google doc
+        mark_tweet_as_posted_on_wks(str(t_id))
+        return True
+    return False
+
 
 # =============== UNIT CONVERSIONS  =========
 

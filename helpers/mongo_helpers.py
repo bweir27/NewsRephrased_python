@@ -7,7 +7,6 @@ from constants import *
 
 
 # =============== SETUP OPERATIONS =========
-
 def init_mongo_client(use_prod=False):
     host = MONGO_HOST
     if use_prod:
@@ -18,8 +17,6 @@ def init_mongo_client(use_prod=False):
 
 
 # =============== AUTHOR OPERATIONS =========
-
-
 def author_is_known(parsed_author, author_db=None):
     if parsed_author is None or not isinstance(parsed_author, TweetAuthor):
         raise Exception('Invalid input for \"parsed_author\"')
@@ -66,8 +63,9 @@ def insert_author_into_db(parsed_author: TweetAuthor, author_db=None):
 
 def get_oldest_seen_tweet_id_mongo(use_prod: bool = False):
     seen_tweet_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
-    min_id = seen_tweet_db.find({}).sort("tweet_id", 1).limit(1)[0]
-    return str(min_id["tweet_id"])
+    # TODO: handle empty DB
+    min_id = seen_tweet_db.find({}).sort("_id", 1).limit(1)[0]
+    return str(min_id["_id"])
 
 
 def get_most_recent_seen_tweet_id_mongo(author_id=None, use_prod: bool = False):
@@ -81,8 +79,8 @@ def get_most_recent_seen_tweet_id_mongo(author_id=None, use_prod: bool = False):
         if num_seen is None or num_seen <= 0:
             #     TODO: handle empty seen tweet DB
             return get_oldest_seen_tweet_id_mongo(use_prod=use_prod)
-    max_id = seen_tweet_db.find(find_query).sort("tweet_id", -1)[0]
-    return str(max_id["tweet_id"])
+    max_id = seen_tweet_db.find(find_query).sort("_id", -1)[0]
+    return str(max_id["_id"])
 
 
 def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
@@ -94,7 +92,7 @@ def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
         tweet_id_str = str(parsed_tweet.tweet_id)
     else:
         tweet_id_str = str(tweet_id)
-    res = seen_db.count_documents({"tweet_id": tweet_id_str})
+    res = seen_db.count_documents({"_id": tweet_id_str})
     return res > 0
 
 
@@ -157,7 +155,7 @@ def insert_tweet_to_seen_db(seen_db, parsed_tweet):
         "$set": parsed_tweet.seen_tweet()
     }
     res = seen_db.update_one(
-        filter={"tweet_id": str(parsed_tweet.tweet_id)},
+        filter={"_id": str(parsed_tweet.tweet_id)},
         update=update_arg,
         upsert=True,
         array_filters=None
@@ -193,8 +191,8 @@ def get_most_recent_tweet_id_from_mongo(mongo_collection, author_id=None) -> str
     find_query = {}
     if author_id:
         find_query = {"author.author_id": str(author_id)}
-    latest_id = mongo_collection.find(find_query).sort("tweet_id", -1).limit(1)[0]
-    return str(latest_id["tweet_id"])
+    latest_id = mongo_collection.find(find_query).sort("_id", -1).limit(1)[0]
+    return str(latest_id["_id"])
 
 
 def tweet_in_mongo(db_coll, tweet):
@@ -204,7 +202,7 @@ def tweet_in_mongo(db_coll, tweet):
         id_val = str(tweet["id"])
     else:
         id_val = str(tweet["tweet_id"])
-    return db_coll.count_documents({"tweet_id": id_val}) > 0
+    return db_coll.count_documents({"_id": id_val}) > 0
 
 
 def insert_parsed_tweet_to_mongodb(tweet_db, parsed_tweet):
@@ -220,7 +218,7 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
     for t in parsed_tweets:
         if not isinstance(t, ParsedTweet):
             raise Exception(f'Invalid Tweet Object: {t}')
-        already_posted = tweet_db.count_documents({"$and": [{"tweet_id": t.tweet_id}, {"posted": True}]})
+        already_posted = tweet_db.count_documents({"$and": [{"_id": t.tweet_id}, {"posted": True}]})
         already_seen = tweet_db.count_documents({"modified_text": t.modified_text})
         if t.num_replacements < 1 or already_posted > 0 or already_seen > 0:
             num_skipped += 1
@@ -228,7 +226,7 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
         update_arg = {
             "$set": t.as_json()
         }
-        r = tweet_db.update_one(filter={"tweet_id": t.tweet_id},
+        r = tweet_db.update_one(filter={"_id": t.tweet_id},
                                 update=update_arg,
                                 upsert=True,
                                 array_filters=None)
@@ -242,19 +240,8 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
 def get_mongo_tweet_by_id(tweet_id: str, tweet_db=None):
     if tweet_db is None:
         tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
-    found_tweet = tweet_db.find_one({"tweet_id": str(tweet_id)})
+    found_tweet = tweet_db.find_one({"_id": str(tweet_id)})
     return found_tweet
-
-
-def mark_tweet_as_posted(tweet_id: str, tweet_db=None):
-    if tweet_db is None:
-        tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
-    found_tweet = tweet_db.find_one({"tweet_id": str(tweet_id)})
-    if found_tweet and not found_tweet["posted"]:
-        t_id = found_tweet["tweet_id"]
-        update_res = tweet_db.update_one(filter={"tweet_id": str(t_id)}, update={"$set": {"posted": True}})
-        return True
-    return False
 
 
 # ========= Stats / Other Operations ===========
