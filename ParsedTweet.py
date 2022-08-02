@@ -12,7 +12,7 @@ class ParsedTweet:
                  been_posted: bool = False):
         if not isinstance(author, TweetAuthor):
             raise Exception(f'Invalid type for \"author\" (expected TweetAuthor, received {type(author)}')
-
+        self._id = str(tweet_id)
         self.author_id = str(author.author_id)
         self.author = author
         self.tweet_id = str(tweet_id)
@@ -48,6 +48,7 @@ class ParsedTweet:
 
     def as_json(self):
         return {
+            "_id": str(self.tweet_id),
             "author": self.author.as_json(),
             "tweet_id": str(self.tweet_id),
             "num_replacements": int(self.num_replacements),

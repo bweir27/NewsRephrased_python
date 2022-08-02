@@ -32,6 +32,7 @@ MIN_INTERVAL_SECONDS = SECONDS_PER_MINUTE * 2
 USE_DEV_ENV = False
 SCRIPT_DESCRIPTION = ''
 EPILOG = ''
+POST_INTERVAL_MINUTES = 30
 
 
 SEED_DATA_CSV = "CSVs/NewsRephrased_SeededSuggestions.csv"
@@ -103,4 +104,4 @@ DB_NAME = "news_rephrased"
 DB_TWEET_COLLECTION_NAME = "eligible_tweets"
 DB_SEEN_COLLECTION_NAME = "seen_tweets"
 DB_AUTHORS_COLLECTION_NAME = "known_authors"
-
+DB_POST_Q_COLLECTION_NAME = "to_post_q"

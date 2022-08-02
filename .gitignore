@@ -255,6 +255,8 @@ fabric.properties
 /CSVs/
 *.csv
 /maintenance_scripts/
-.idea/workspace.xml
-
 /secrets.py
+.idea/workspace.xml
+.idea/dataSources.xml
+
+

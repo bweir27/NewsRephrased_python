@@ -1,5 +1,4 @@
 import gspread
-from TweetAuthor import TweetAuthor
 from constants import *
 from helpers.mongo_helpers import init_mongo_client, get_key_freq_map, count_total_in_seen_db, \
     count_num_eligible_in_db, count_seen_eligible_by_author_list, get_num_tweets_posted, \
@@ -48,6 +47,14 @@ def get_most_recent_tweet_url_from_worksheet(worksheet):
     target_cell = ''.join([SUGGESTION_COL_VALS["tweet_url"], str(most_recent_row[1])])
     tweet_url = worksheet.acell(target_cell).value
     return tweet_url
+
+
+def mark_tweet_as_posted_on_wks(tweet_id: str):
+    eligible_wks = init_google_drive_clients()[SUGGESTION_WORKSHEET_NUM]
+    found = eligible_wks.find(str(tweet_id))
+    if found:
+        target_cell = SUGGESTION_COL_VALS["posted"] + str(found.row)
+        eligible_wks.update_acell(target_cell, bool(True))
 
 
 def tweet_has_been_seen_in_worksheet(worksheet, tweet, max_seen_id="0") -> bool:
