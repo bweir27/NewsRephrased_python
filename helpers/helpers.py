@@ -1,7 +1,6 @@
 import pprint
 import re
 import time
-
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *

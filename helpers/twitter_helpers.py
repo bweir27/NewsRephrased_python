@@ -14,6 +14,22 @@ def init_twitter_client():
     )
 
 
+def get_user_most_recent_tweet(twitter_client: tweepy.Client, target: tweepy.User):
+    raw_tweet_objs = list()
+    most_recent = twitter_client.get_users_tweets(
+        id=target.id,
+        exclude=["retweets", "replies"],
+        max_results=5,
+        tweet_fields=["id", "text", "created_at"],
+        expansions=["author_id"],
+        user_fields=["username"]
+    )
+    if most_recent.meta["result_count"] > 0:
+        raw_tweet_objs.extend(most_recent.data)
+    id_list = list(map(lambda x: x["id"], raw_tweet_objs))
+    return raw_tweet_objs[0]
+
+
 def get_user_recent_tweets(twitter_client: tweepy.Client, target: tweepy.User, most_recent_id: str or float or int) -> list:
     recent_tweets = twitter_client.get_users_tweets(
                 id=target.id,

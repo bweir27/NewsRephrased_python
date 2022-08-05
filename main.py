@@ -75,6 +75,7 @@ def post_queue_listener(name):
             if show_output:
                 print(earliest["modified_text"])
             post_tweet(earliest, show_output=show_output)
+            logging.info(f"Tweet Posted: {earliest}")
             #     remove from post Q
             delete_res = post_q.delete_one({"tweet_id": earliest["tweet_id"]})
             if show_output:

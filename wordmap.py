@@ -86,7 +86,7 @@ WORD_MAP = {
     "local": "international",
     "donation": "bribe",
     "GoFundMe": "American Healthcare",
-    "hundreds": "like... two (max)",
+    "hundreds": "like...two (max)",
     "millions": 'an incalculable amount',
     "million": '',
     "billionaire": "oligarch",
@@ -110,6 +110,9 @@ WORD_MAP = {
     " gas ": " weed ",
     "breaking news": "HOLY SHIT",
     "yacht": "canoe",
+    "former": "disgraced",
+    "committee": "fanclub",
+
 }
 
 """
