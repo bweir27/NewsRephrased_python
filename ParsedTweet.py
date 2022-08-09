@@ -3,6 +3,7 @@ import pprint
 from functools import reduce
 
 from TweetAuthor import TweetAuthor
+from constants import TWEET_CHAR_LIMIT
 from replacement_filter import apply_replacement_filter
 
 
@@ -32,19 +33,18 @@ class ParsedTweet:
         self.created_at = created_at
         self.mapped_key_list = repl_freq_map
         self.posted = been_posted
-        self.json = self.as_json()
-        self.seen_obj = self.seen_tweet()
-        self.is_eligible = bool(self.num_replacements > 0)
+        self.is_eligible = bool(self.num_replacements > 0 and len(self.modified_text) <= TWEET_CHAR_LIMIT)
+        # self.json = self.as_json()
+        # self.seen_obj = self.seen_tweet()
 
     def __str__(self):
-        return self.json
+        return self.as_json()
 
     def __repr__(self):
         return str(self)
 
     def post_tweet(self, value=True):
         self.posted = value
-        self.json = self.as_json()
 
     def as_json(self):
         return {
@@ -66,5 +66,5 @@ class ParsedTweet:
             "tweet_id": str(self.tweet_id),
             "created_at": self.created_at,
             "tweet_url": self.tweet_url,
-            "valid_tweet": bool(self.num_replacements > 0)
+            "valid_tweet": bool(self.is_eligible)
         }

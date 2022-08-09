@@ -1,4 +1,7 @@
 gspread==5.4.0
 numpy==1.23.0
 pymongo==4.1.1
+python_twitter==3.5
 tweepy==4.10.0
+mysql-connector-python~=8.0.30
+twitter~=1.19.3

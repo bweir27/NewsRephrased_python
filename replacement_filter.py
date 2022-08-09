@@ -24,6 +24,13 @@ def normalize_str(text: str) -> str:
     res = remove_url_from_tweet_text(text)
     res = re.sub(pattern=r'\s+', repl=' ', string=res)
     res = re.sub(pattern=r'\s+([?.,:;!"](?:\s|$))', repl=r'\1', string=res)
+    # Normalize capitalization
+    sp = res.split(". ")
+    c = list()
+    for s in sp:
+        if len(s) > 0:
+            c.append(s[0].upper() + s[1:])
+    res = ". ".join(c)
     return res.strip()
 
 
