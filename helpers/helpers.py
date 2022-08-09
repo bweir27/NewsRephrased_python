@@ -18,7 +18,7 @@ from replacement_filter import apply_replacement_filter
 def tweet_is_eligible(parsed_tweet: ParsedTweet) -> bool:
     if not isinstance(parsed_tweet, ParsedTweet):
         raise Exception(f'Invalid Tweet Object: {parsed_tweet}')
-    return parsed_tweet.num_replacements > 0
+    return parsed_tweet.is_eligible
 
 
 def sort_by_tweet_id(tweet) -> str:

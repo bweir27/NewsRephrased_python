@@ -14,7 +14,7 @@ WORD_MAP = {
     "rebuild": "avenge",
     "space": "spaaace",
     "google glass": "virtual box",
-    "smartphone": "pokédex",
+    "smartphone": "Pokédex",
     "electric": "atomic",
     "senator": "elf-lord",
     " car ": " cat ",

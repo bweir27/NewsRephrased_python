@@ -61,11 +61,12 @@ def post_queue_listener(name):
     num_runs = 1
     show_output = args.show_debug_logs
     while not exit_threads.is_set():
-        logging.info(f"Thread {name}: {num_runs}")
+        logging.info(f"Thread {name}: run #{num_runs}")
         #  Get first tweet from Q
         post_q = init_mongo_client()[DB_POST_Q_COLLECTION_NAME]
         # first, check if empty
         num_docs = post_q.count_documents(filter={"posted": False})
+        logging.info(f"Post Q len: {num_docs}")
         if num_docs > 0:
             #  Get earliest in Q
             earliest_res = post_q.find({"posted": False}).sort("_id", 1)
@@ -80,6 +81,8 @@ def post_queue_listener(name):
             delete_res = post_q.delete_one({"tweet_id": earliest["tweet_id"]})
             if show_output:
                 print(delete_res.raw_result)
+        else:
+            logging.info("Q is empty...")
         next_post_run_start = datetime.datetime.now() + datetime.timedelta(seconds=(SECONDS_PER_MINUTE * 15))
         logging.info(f'The next POST run will begin in {POST_INTERVAL_MINUTES} minutes (at approx:\t{str(next_post_run_start)})\n')
         exit_threads.wait(SECONDS_PER_MINUTE * POST_INTERVAL_MINUTES)
