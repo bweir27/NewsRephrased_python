@@ -110,18 +110,6 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
     twitter_client = init_twitter_client()
     print('done.')
 
-    # Retrieve all known targets
-    print('Retrieving targets...', end='')
-    known_authors_res = get_all_known_authors(author_db=authors_db)
-    targets = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
-    print('done.')
-
-    if args.show_debug_logs:
-        print('Targets:')
-        for t in targets:
-            print(t)
-
-    exit_threads.wait(2)
     run_number = 1
     global session_num_added
     session_start_time = datetime.datetime.now()
@@ -148,7 +136,10 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         num_added_this_run = 0
         run_start_time = datetime.datetime.now()
         print(f'RUN #{run_number}:\nStart time: {str(run_start_time)}')
-        # TODO: refresh targets each run to allow for continuous runs
+
+        known_authors_res = get_all_known_authors(author_db=authors_db)
+        targets = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
+
         for target in targets:
             print(f'Updates from @{target.username}:')
             most_recent_tweet_id = get_most_recent_seen_tweet_id(author_id=target.author_id)
@@ -156,6 +147,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
                 print(f'\tMost recent tweet ID from @{target.username}: {most_recent_tweet_id}')
 
             # Get data for Twitter User
+            # TODO: refactor this to use known_authors_res.data
             target_user = twitter_client.get_user(username=str(target.username))
 
             # Get recent tweets from this user
@@ -170,7 +162,6 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
 
             if len(raw_tweet_objs) > 0:
                 tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, author=target), raw_tweet_objs))
-                print('\tChecking how many of these have already been seen...')
                 num_have_been_seen = count_num_in_seen_db(
                     seen_db=seen_tweet_db,
                     parsed_tweets=tweet_objs
