@@ -145,11 +145,12 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         num_added_this_run = 0
         run_start_time = datetime.datetime.now()
         print(f'RUN #{run_number}:\nStart time: {str(run_start_time)}')
+        # TODO: refresh targets each run to allow for continuous runs
         for target in targets:
             print(f'Updates from @{target.username}:')
-            most_recent_tweet_id_mongo = get_most_recent_seen_tweet_id_mongo(author_id=target.author_id)
+            most_recent_tweet_id = get_most_recent_seen_tweet_id(author_id=target.author_id)
             if args.show_debug_logs:
-                print(f'\tMost recent tweet ID from @{target.username}: {most_recent_tweet_id_mongo}')
+                print(f'\tMost recent tweet ID from @{target.username}: {most_recent_tweet_id}')
 
             # Get data for Twitter User
             target_user = twitter_client.get_user(username=str(target.username))
@@ -159,7 +160,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
             raw_tweet_objs = get_user_recent_tweets(
                 twitter_client=twitter_client,
                 target=target_user.data,
-                most_recent_id=most_recent_tweet_id_mongo
+                most_recent_id=most_recent_tweet_id
             )
             print('done.')
             print(f'\tRetrieved {len(raw_tweet_objs)} new Tweets from @{target.username}.')

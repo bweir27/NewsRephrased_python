@@ -14,7 +14,16 @@ def init_twitter_client():
     )
 
 
-def get_user_most_recent_tweet(twitter_client: tweepy.Client, target: tweepy.User):
+def get_user_most_recent_tweet(target: tweepy.User = None, target_id: str = None):
+    twitter_client = init_twitter_client()
+    if target is None and target_id is None:
+        raise Exception("Must provide at least one value")
+    if target is None:
+        t_usr = get_twitter_user(user_id=target_id, twitter_client=twitter_client)
+        if t_usr and t_usr.data:
+            target = t_usr.data
+        else:
+            raise Exception("Invalid User ID")
     raw_tweet_objs = list()
     most_recent = twitter_client.get_users_tweets(
         id=target.id,
@@ -26,16 +35,24 @@ def get_user_most_recent_tweet(twitter_client: tweepy.Client, target: tweepy.Use
     )
     if most_recent.meta["result_count"] > 0:
         raw_tweet_objs.extend(most_recent.data)
-    id_list = list(map(lambda x: x["id"], raw_tweet_objs))
-    return raw_tweet_objs[0]
+        id_list = list(map(lambda x: x["id"], raw_tweet_objs))
+        return raw_tweet_objs[0]
+    return None
 
 
-def get_user_recent_tweets(twitter_client: tweepy.Client, target: tweepy.User, most_recent_id: str or float or int) -> list:
+def get_user_recent_tweets(twitter_client: tweepy.Client, target: tweepy.User, most_recent_id: str or float or int = None, max_results: int = 100) -> list:
+    if most_recent_id is None:
+        # if no specified most_recent_id (if new author), only retrieve 5 most recent
+        max_results = 5
+    if max_results > 100:
+        max_results = 100
+    elif max_results < 5:
+        max_results = 5
     recent_tweets = twitter_client.get_users_tweets(
                 id=target.id,
                 since_id=most_recent_id,
                 exclude=["retweets", "replies"],
-                max_results=100,
+                max_results=max_results,
                 tweet_fields=["id", "text", "created_at"],
                 expansions=["author_id"],
                 user_fields=["username"]
@@ -45,7 +62,7 @@ def get_user_recent_tweets(twitter_client: tweepy.Client, target: tweepy.User, m
     if recent_tweets.meta["result_count"] > 0:
         raw_tweet_objs.extend(recent_tweets.data)
         # Handle pagination
-        while recent_tweets.meta["result_count"] > 0 and "next_token" in recent_tweets.meta:
+        while recent_tweets.meta["result_count"] > 0 and "next_token" in recent_tweets.meta and most_recent_id:
             next_page_token = recent_tweets.meta["next_token"]
             recent_tweets = twitter_client.get_users_tweets(
                 id=target.id,
@@ -62,7 +79,7 @@ def get_user_recent_tweets(twitter_client: tweepy.Client, target: tweepy.User, m
     return raw_tweet_objs
 
 
-def get_twitter_user(user_id=None, username=None, twitter_client=None):
+def get_twitter_user(user_id: str or int or float = None, username: str = None, twitter_client=None):
     if all(v is None for v in [user_id, username]):
         raise Exception('Must provide at least one value')
     if username and not isinstance(username, str):

@@ -112,7 +112,8 @@ WORD_MAP = {
     "yacht": "canoe",
     "former": "disgraced",
     "committee": "fanclub",
-
+    "restaurants": "Denny\'s",
+    "restaurant": "Denny\'s",
 }
 
 """

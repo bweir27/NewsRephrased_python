@@ -1,13 +1,17 @@
 import pprint
 import re
 import time
+
+import tweepy
+
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
 from constants import *
 from helpers.google_helpers import mark_tweet_as_posted_on_wks
 from helpers.mongo_helpers import init_mongo_client, get_all_known_authors, insert_parsed_tweets_to_mongodb, \
-    insert_many_tweets_to_seen_db, get_total_num_replacements
-from helpers.twitter_helpers import init_twitter_client
+    insert_many_tweets_to_seen_db, get_total_num_replacements, get_oldest_seen_tweet_id_mongo, \
+    get_most_recent_seen_tweet_id_mongo
+from helpers.twitter_helpers import init_twitter_client, get_twitter_user, get_user_most_recent_tweet
 from replacement_filter import apply_replacement_filter
 
 
@@ -59,6 +63,29 @@ def get_parsed_tweet_obj(tweet, author: TweetAuthor) -> ParsedTweet:
         repl_freq_map=filterInfo["replaced_key_freq"]
     )
     return res
+
+
+def get_most_recent_seen_tweet_id(author_id=None, use_prod: bool = False):
+    seen_tweet_db = init_mongo_client(use_prod=use_prod)[DB_SEEN_COLLECTION_NAME]
+    find_query = {}
+    if author_id:
+        auth_id = str(author_id)
+        find_query = {"author.author_id": auth_id}
+        # Check if at least one tweet from this author has been seen before in MongoDB
+        num_seen = seen_tweet_db.count_documents(find_query)
+        if num_seen is None or num_seen <= 0:
+            # if no Tweet from this author has been seen before in Mongo,
+            #   get the most recent tweet from this Twitter User
+            recent_tweet = get_user_most_recent_tweet(target_id=author_id)
+            if recent_tweet:
+                return None
+                # return str(recent_tweet.id)
+            else:
+                raise Exception("Invalid author")
+        else:
+            return get_most_recent_seen_tweet_id_mongo(author_id=author_id)
+    # if no specified author
+    return get_most_recent_seen_tweet_id_mongo()
 
 
 def drop_unposted_tweets(use_prod: bool = False):

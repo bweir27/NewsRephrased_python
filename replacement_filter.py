@@ -28,7 +28,8 @@ def normalize_str(text: str) -> str:
     sp = res.split(". ")
     c = list()
     for s in sp:
-        c.append(s[0].upper() + s[1:])
+        if len(s) > 1:
+            c.append(s[0].upper() + s[1:])
     res = ". ".join(c)
     return res.strip()
 

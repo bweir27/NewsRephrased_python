@@ -117,7 +117,7 @@ def update_stats_wks(worksheet=None):
     stats_wks = worksheet
     if worksheet is None:
         stats_wks = init_google_drive_clients()[STATS_WORKSHEET_NUM]
-    # TODO: refactor to just get per-author stats, then reduce() to derive # seen/eligible from there
+    # TODO: refactor to just get per-author stats, then reduce() to derive # seen/eligible/posted from there
     # get total number of "seen" tweets
     total_num_seen = count_total_in_seen_db()
     # get total number of "eligible" tweets
@@ -127,7 +127,16 @@ def update_stats_wks(worksheet=None):
     # Get seen vs eligible stats on a per-author basis
     author_eligible_seen = count_seen_eligible_by_author_list()
     author_posted = get_num_tweets_posted_per_author()
-    author_stats = list(map(lambda x: [x["formatted"], x["seen"], x["eligible"], author_posted[x["formatted"]]], author_eligible_seen))
+    author_stats = list(
+        map(
+            lambda x:
+            [x["formatted"],
+             x["seen"],
+             x["eligible"],
+             (author_posted[x["formatted"]] if x["formatted"] in author_posted else 0)],
+            author_eligible_seen
+        )
+    )
     # Update Stats worksheet page
     stats_wks.update_acell(STATS_WORKSHEET_NUM_SEEN_CELL, total_num_seen)
     stats_wks.update_acell(STATS_WORKSHEET_NUM_ELIGIBLE_CELL, total_num_eligible)
