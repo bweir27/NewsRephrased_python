@@ -10,10 +10,10 @@ class TweetAuthor:
         self.username = username
         self.formatted_name = f'{self.name} (@{self.username})'
         self.url = f'{BASE_URL}{self.username}'
-        self.json = self.as_json()
+        # self.json = self.as_json()
 
     def __str__(self):
-        return str(self.json)
+        return str(self.as_json())
 
     def __repr__(self):
         return self

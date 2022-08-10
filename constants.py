@@ -58,7 +58,7 @@ SUGGESTION_HEADER_ROW = [
     "Original",
     "Revised",
     "Replaced Words",
-    "Date Posted",
+    "Date Posted (UTC)",
     "TweetID",
     "Posted?"
 ]
@@ -96,6 +96,8 @@ HEADER_ROW_BORDER = {
 # ======== Twitter constants ========
 BASE_URL = "https://twitter.com/"
 TWEET_CHAR_LIMIT = 280
+ACCOUNT_USERNAME = "NewsRephrased"
+
 
 
 # ======== MongoDB Constants ========
@@ -106,3 +108,4 @@ DB_TWEET_COLLECTION_NAME = "eligible_tweets"
 DB_SEEN_COLLECTION_NAME = "seen_tweets"
 DB_AUTHORS_COLLECTION_NAME = "known_authors"
 DB_POST_Q_COLLECTION_NAME = "to_post_q"
+DB_POSTED_COLLECTION_NAME = "posted_tweets"

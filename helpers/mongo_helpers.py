@@ -1,3 +1,6 @@
+import json
+
+import pymongo.results
 from pymongo import MongoClient
 
 import secrets
@@ -17,19 +20,19 @@ def init_mongo_client(use_prod=False):
 
 
 # =============== AUTHOR OPERATIONS =========
-def author_is_known(parsed_author, author_db=None):
+def author_is_known(parsed_author, author_db=None, use_prod: bool = False):
     if parsed_author is None or not isinstance(parsed_author, TweetAuthor):
         raise Exception('Invalid input for \"parsed_author\"')
     if author_db is None:
-        author_db = init_mongo_client()[DB_AUTHORS_COLLECTION_NAME]
+        author_db = init_mongo_client(use_prod=use_prod)[DB_AUTHORS_COLLECTION_NAME]
     return author_db.count_documents({"author_id": parsed_author.author_id}) > 0
 
 
-def get_author_from_db(author_db=None, author_id=None, username=None):
+def get_author_from_db(author_db=None, author_id=None, username=None, use_prod: bool = False):
     if all(a is None for a in [author_id, username]):
         raise Exception("Must provide at least one of the fields")
     if author_db is None:
-        author_db = init_mongo_client()[DB_AUTHORS_COLLECTION_NAME]
+        author_db = init_mongo_client(use_prod=use_prod)[DB_AUTHORS_COLLECTION_NAME]
     if author_id:
         field = "author_id"
         val = str(author_id)
@@ -39,18 +42,18 @@ def get_author_from_db(author_db=None, author_id=None, username=None):
     return author_db.find_one({field: val})
 
 
-def get_all_known_authors(author_db=None):
+def get_all_known_authors(author_db=None, use_prod: bool = False):
     if author_db is None:
-        author_db = init_mongo_client()[DB_AUTHORS_COLLECTION_NAME]
+        author_db = init_mongo_client(use_prod=use_prod)[DB_AUTHORS_COLLECTION_NAME]
     return author_db.find({})
 
 
-def insert_author_into_db(parsed_author: TweetAuthor, author_db=None):
+def insert_author_into_db(parsed_author: TweetAuthor, author_db=None, use_prod: bool = False):
     if parsed_author is None or not isinstance(parsed_author, TweetAuthor):
         raise Exception('Invalid input for \"parsed_author\" '
                         f'(expected type TweetAuthor, received {type(parsed_author)}')
     if author_db is None:
-        author_db = init_mongo_client()[DB_AUTHORS_COLLECTION_NAME]
+        author_db = init_mongo_client(use_prod=use_prod)[DB_AUTHORS_COLLECTION_NAME]
     return author_db.update_one(
         filter={"author_id": str(parsed_author.author_id)},
         update={"$set": parsed_author.as_json()},
@@ -175,7 +178,6 @@ def insert_many_tweets_to_seen_db(seen_db, parsed_tweets) -> list:
 
 # ========= Tweet Operations ===========
 
-
 def count_num_eligible_in_db(collection=None, use_prod: bool = False):
     if collection is None:
         collection = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
@@ -205,11 +207,14 @@ def tweet_in_mongo(db_coll, tweet):
     return db_coll.count_documents({"_id": id_val}) > 0
 
 
-def insert_parsed_tweet_to_mongodb(tweet_db, parsed_tweet):
+def insert_parsed_tweet_to_mongodb(tweet_db, parsed_tweet) -> pymongo.results.UpdateResult:
     if not isinstance(parsed_tweet, ParsedTweet):
         raise Exception(f'Invalid Tweet Object: {parsed_tweet}')
-    res = tweet_db.insert_one(parsed_tweet.as_json())
-    return res
+    return tweet_db.update_one(
+        filter={"tweet_id": parsed_tweet.tweet_id},
+        update={"$set": parsed_tweet.as_json()},
+        upsert=True
+    )
 
 
 def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
@@ -237,9 +242,21 @@ def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
     }
 
 
-def get_mongo_tweet_by_id(tweet_id: str, tweet_db=None):
+def insert_posted_tweet_to_db(posted_obj: dict, posted_db = None, use_prod: bool = False):
+    if posted_db is None:
+        posted_db = init_mongo_client(use_prod=use_prod)[DB_POSTED_COLLECTION_NAME]
+    insert_res = posted_db.update_one(
+        filter={"_id": posted_obj["_id"]},
+        update={"$set": posted_obj},
+        upsert=True,
+        array_filters=None
+    )
+    return insert_res
+
+
+def get_mongo_tweet_by_id(tweet_id: str, tweet_db=None, use_prod: bool = False):
     if tweet_db is None:
-        tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+        tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
     found_tweet = tweet_db.find_one({"_id": str(tweet_id)})
     return found_tweet
 
@@ -282,7 +299,7 @@ def get_key_freq_map(use_prod: bool = False):
     return counts
 
 
-def get_num_tweets_posted(use_prod:bool = False):
+def get_num_tweets_posted(use_prod: bool = False):
     tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
     return tweet_db.count_documents({"posted": True})
 
@@ -320,3 +337,4 @@ def get_num_tweets_posted_per_author(use_prod: bool = False):
     ]
     counts = tweet_db.aggregate(pipeline=pipeline).next()
     return counts
+

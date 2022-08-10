@@ -34,8 +34,6 @@ parser.add_argument('--debug-logs', action='store_true', default=DEBUG_LOGS_DISA
 parser.add_argument('--prod', action='store_true', default=PROD_DISABLED,
                     required=False, help=USE_PROD_DESC, dest='use_prod')
 
-# TODO: add DEV_ENV arg
-
 args = parser.parse_args()
 
 db = init_mongo_client(use_prod=args.use_prod)
@@ -59,28 +57,33 @@ def quit_threads(signo, _frame):
 def post_queue_listener(name):
     logging.info(f"POST_Q_LISTENER:\t{name}")
     num_runs = 1
-    show_output = args.show_debug_logs
+    SHOW_OUTPUT = args.show_debug_logs
+    USE_PROD = args.use_prod
     while not exit_threads.is_set():
         logging.info(f"Thread {name}: run #{num_runs}")
         #  Get first tweet from Q
-        post_q = init_mongo_client()[DB_POST_Q_COLLECTION_NAME]
+        post_q = init_mongo_client(use_prod=args.use_prod)[DB_POST_Q_COLLECTION_NAME]
         # first, check if empty
         num_docs = post_q.count_documents(filter={"posted": False})
         logging.info(f"Post Q len: {num_docs}")
         if num_docs > 0:
             #  Get earliest in Q
             earliest_res = post_q.find({"posted": False}).sort("_id", 1)
-            if show_output:
-                print(f'\nEarliest Res: {earliest_res}')
+            if SHOW_OUTPUT:
+                logging.info(f'\nEarliest Res: {earliest_res}')
             earliest = earliest_res.next()
-            if show_output:
-                print(earliest["modified_text"])
-            post_tweet(earliest, show_output=show_output)
+            if SHOW_OUTPUT:
+                logging.info(earliest["modified_text"])
+            logging.info(f"Earliest ID: {earliest.get('_id')}")
+            post_res, reply_res, insert_res = post_tweet(earliest, show_output=SHOW_OUTPUT, use_prod=USE_PROD)
             logging.info(f"Tweet Posted: {earliest}")
+            logging.info(f"post_res: {post_res}")
+            logging.info(f"reply_res: {reply_res}")
+            logging.info(f"insert_res: {insert_res.acknowledged}")
             #     remove from post Q
             delete_res = post_q.delete_one({"tweet_id": earliest["tweet_id"]})
-            if show_output:
-                print(delete_res.raw_result)
+            if SHOW_OUTPUT:
+                logging.info(delete_res.raw_result)
         else:
             logging.info("Q is empty...")
         next_post_run_start = datetime.datetime.now() + datetime.timedelta(seconds=(SECONDS_PER_MINUTE * 15))
@@ -93,9 +96,10 @@ def post_queue_listener(name):
 def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
     print('\nStarting tweet parser...')
     print('Setting up services...', end=' ')
+    USE_PROD = args.use_prod
 
     # Refresh mongo connections
-    db = init_mongo_client(use_prod=args.use_prod)
+    db = init_mongo_client(use_prod=USE_PROD)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_tweet_db = db[DB_SEEN_COLLECTION_NAME]
     authors_db = db[DB_AUTHORS_COLLECTION_NAME]
@@ -121,7 +125,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         # refresh connections
         if run_number > 1:
             # Refresh MongoDB connections
-            db = init_mongo_client(use_prod=args.use_prod)
+            db = init_mongo_client(use_prod=USE_PROD)
             tweet_db = db[DB_TWEET_COLLECTION_NAME]
             seen_tweet_db = db[DB_SEEN_COLLECTION_NAME]
             authors_db = db[DB_AUTHORS_COLLECTION_NAME]
@@ -137,12 +141,12 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         run_start_time = datetime.datetime.now()
         print(f'RUN #{run_number}:\nStart time: {str(run_start_time)}')
 
-        known_authors_res = get_all_known_authors(author_db=authors_db)
+        known_authors_res = get_all_known_authors(author_db=authors_db, use_prod=USE_PROD)
         targets = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
 
         for target in targets:
             print(f'Updates from @{target.username}:')
-            most_recent_tweet_id = get_most_recent_seen_tweet_id(author_id=target.author_id)
+            most_recent_tweet_id = get_most_recent_seen_tweet_id(author_id=target.author_id, use_prod=USE_PROD)
             if args.show_debug_logs:
                 print(f'\tMost recent tweet ID from @{target.username}: {most_recent_tweet_id}')
 
@@ -213,13 +217,15 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
             worksheet_update_num = update_suggested_tweet_wks(
                 worksheet=suggest_wks,
                 partial_update=True,
-                show_output=args.show_debug_logs
+                show_output=args.show_debug_logs,
+                use_prod=USE_PROD
             )
             update_wordmap_wks(
                 worksheet=map_wks,
-                show_output=args.show_debug_logs
+                show_output=args.show_debug_logs,
+                use_prod=USE_PROD
             )
-            update_stats_wks(worksheet=stats_wks)
+            update_stats_wks(worksheet=stats_wks, use_prod=USE_PROD)
             print(f'\t{worksheet_update_num} changes in worksheet')
         session_num_added += num_added_this_run
 
