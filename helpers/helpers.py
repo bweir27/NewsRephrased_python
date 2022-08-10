@@ -30,6 +30,10 @@ def get_date_for_tweet_by_id(t_id, twitter_client):
     return t.data["created_at"]
 
 
+def get_tweet_url(tweet_id: str, username: str) -> str:
+    return f'{BASE_URL}{username}/status/{tweet_id}'
+
+
 def extract_tweet_id_from_url(url: str) -> str:
     str_url = str(url)
     if BASE_URL not in str_url:
@@ -83,9 +87,9 @@ def get_most_recent_seen_tweet_id(author_id=None, use_prod: bool = False):
             else:
                 raise Exception("Invalid author")
         else:
-            return get_most_recent_seen_tweet_id_mongo(author_id=author_id)
+            return get_most_recent_seen_tweet_id_mongo(author_id=author_id, use_prod=use_prod)
     # if no specified author
-    return get_most_recent_seen_tweet_id_mongo()
+    return get_most_recent_seen_tweet_id_mongo(use_prod=use_prod)
 
 
 def drop_unposted_tweets(use_prod: bool = False):
@@ -133,7 +137,7 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     db = init_mongo_client(use_prod=use_prod)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_db = db[DB_SEEN_COLLECTION_NAME]
-    drop_unposted_tweets()
+    drop_unposted_tweets(use_prod=use_prod)
     num_start = tweet_db.count_documents({})
     if show_output:
         print(f"startNum: {num_start}")
@@ -149,7 +153,7 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     split_size = 100
     a_splitted = [to_visit_ids[x:x + split_size] for x in range(0, len(to_visit_ids), split_size)]
 
-    known_authors_res = get_all_known_authors()
+    known_authors_res = get_all_known_authors(use_prod=use_prod)
     authors = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
     auth_dict = {}
     total_num_skipped = 0
@@ -183,13 +187,16 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     drop_eligible_duplicates()
 
 
-def mark_tweet_as_posted(tweet_id: str, tweet_db=None):
+def mark_tweet_as_posted(tweet_id: str, tweet_db=None, use_prod: bool = False):
     if tweet_db is None:
-        tweet_db = init_mongo_client()[DB_TWEET_COLLECTION_NAME]
+        tweet_db = init_mongo_client(use_prod=use_prod)[DB_TWEET_COLLECTION_NAME]
+    post_q_db = init_mongo_client(use_prod=use_prod)[DB_POST_Q_COLLECTION_NAME]
     found_tweet = tweet_db.find_one({"_id": str(tweet_id)})
+    found_q = post_q_db.find_one({"_id": str(tweet_id)})
     if found_tweet and not found_tweet["posted"]:
         t_id = found_tweet["_id"]
         update_res = tweet_db.update_one(filter={"_id": str(t_id)}, update={"$set": {"posted": True}})
+        update_res_2 = post_q_db.update_one(filter={"_id": str(tweet_id)}, update={"$set": {"posted": True}})
         # Update google doc
         mark_tweet_as_posted_on_wks(str(t_id))
         return True

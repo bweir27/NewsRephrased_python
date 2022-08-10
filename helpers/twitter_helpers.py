@@ -79,6 +79,15 @@ def get_user_recent_tweets(twitter_client: tweepy.Client, target: tweepy.User, m
     return raw_tweet_objs
 
 
+def get_tweet_by_id(tweet_id, twitter_client):
+    return twitter_client.get_tweet(
+        id=tweet_id,
+        expansions="author_id",
+        tweet_fields=["id", "text", "created_at"],
+        user_fields=["username"]
+    )
+
+
 def get_twitter_user(user_id: str or int or float = None, username: str = None, twitter_client=None):
     if all(v is None for v in [user_id, username]):
         raise Exception('Must provide at least one value')

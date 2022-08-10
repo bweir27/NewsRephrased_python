@@ -114,6 +114,7 @@ WORD_MAP = {
     "committee": "fanclub",
     "restaurants": "Denny\'s",
     "restaurant": "Denny\'s",
+    "GOP": "Antifa",
 }
 
 """

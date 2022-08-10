@@ -95,11 +95,11 @@ def update_blocked_term_wks(worksheet=None, show_output: bool = False):
         print('Done.')
 
 
-def update_wordmap_wks(worksheet=None, show_output: bool = False):
+def update_wordmap_wks(worksheet=None, show_output: bool = False, use_prod: bool = False):
     to_add = list()
     start_cell = 'A2'
     wordmap_wks = worksheet
-    key_freq_counts = get_key_freq_map()
+    key_freq_counts = get_key_freq_map(use_prod=use_prod)
     if wordmap_wks is None:
         wordmap_wks = init_google_drive_clients()[SUGGESTION_WORKSHEET_NUM]
     if show_output:
@@ -113,20 +113,20 @@ def update_wordmap_wks(worksheet=None, show_output: bool = False):
         print('done.')
 
 
-def update_stats_wks(worksheet=None):
+def update_stats_wks(worksheet=None, use_prod: bool = False):
     stats_wks = worksheet
     if worksheet is None:
         stats_wks = init_google_drive_clients()[STATS_WORKSHEET_NUM]
     # TODO: refactor to just get per-author stats, then reduce() to derive # seen/eligible/posted from there
     # get total number of "seen" tweets
-    total_num_seen = count_total_in_seen_db()
+    total_num_seen = count_total_in_seen_db(use_prod=use_prod)
     # get total number of "eligible" tweets
-    total_num_eligible = count_num_eligible_in_db()
+    total_num_eligible = count_num_eligible_in_db(use_prod=use_prod)
     # Get total number of tweets posted
-    total_num_posted = get_num_tweets_posted()
+    total_num_posted = get_num_tweets_posted(use_prod=use_prod)
     # Get seen vs eligible stats on a per-author basis
-    author_eligible_seen = count_seen_eligible_by_author_list()
-    author_posted = get_num_tweets_posted_per_author()
+    author_eligible_seen = count_seen_eligible_by_author_list(use_prod=use_prod)
+    author_posted = get_num_tweets_posted_per_author(use_prod=use_prod)
     author_stats = list(
         map(
             lambda x:
@@ -242,17 +242,17 @@ def update_suggested_tweet_wks(worksheet=None, partial_update: bool = True, show
     return num_found_tweets
 
 
-def update_worksheets(partial_update=True, show_output=False):
+def update_worksheets(partial_update=True, show_output=False, use_prod: bool = False):
     google_clients = init_google_drive_clients()
     wordmap_worksheet = google_clients[WORDMAP_WORKSHEET_NUM]
     suggest_worksheet = google_clients[SUGGESTION_WORKSHEET_NUM]
     stats_wks = google_clients[STATS_WORKSHEET_NUM]
     blocked_wks = google_clients[BLOCKED_TERM_WORKSHEET_NUM]
-    update_wordmap_wks(worksheet=wordmap_worksheet, show_output=show_output)
-    update_suggested_tweet_wks(worksheet=suggest_worksheet, partial_update=partial_update, show_output=show_output)
-    update_stats_wks(worksheet=stats_wks)
+    update_wordmap_wks(worksheet=wordmap_worksheet, show_output=show_output, use_prod=use_prod)
+    update_suggested_tweet_wks(worksheet=suggest_worksheet, partial_update=partial_update, show_output=show_output, use_prod=use_prod)
+    update_stats_wks(worksheet=stats_wks, use_prod=use_prod)
     update_blocked_term_wks(worksheet=blocked_wks, show_output=show_output)
 
 
-def complete_refresh_spreadsheets(show_output=False):
-    update_worksheets(partial_update=False, show_output=show_output)
+def complete_refresh_spreadsheets(show_output=False, use_prod: bool = False):
+    update_worksheets(partial_update=False, show_output=show_output, use_prod=use_prod)
