@@ -5,10 +5,8 @@ from wordmap import WORD_MAP, WORDMAP_SWAP_CASES
 
 
 def remove_url_from_tweet_text(txt: str) -> str:
-    url_idx = txt.find("http")
-    if url_idx > 0:
-        return txt[0:url_idx].strip()
-    return txt.strip()
+    url_regex = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+    return re.sub(pattern=url_regex, repl="", string=txt)
 
 
 def contains_blocked_term(text: str):

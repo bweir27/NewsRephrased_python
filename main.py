@@ -54,7 +54,7 @@ def quit_threads(signo, _frame):
     exit_threads.set()
 
 
-def post_queue_listener(name):
+def post_queue_listener(name, interval_minutes: int = POST_INTERVAL_MINUTES):
     logging.info(f"POST_Q_LISTENER:\t{name}")
     num_runs = 1
     SHOW_OUTPUT = args.show_debug_logs
@@ -86,7 +86,7 @@ def post_queue_listener(name):
                 logging.info(delete_res.raw_result)
         else:
             logging.info("Q is empty...")
-        next_post_run_start = datetime.datetime.now() + datetime.timedelta(seconds=(SECONDS_PER_MINUTE * 15))
+        next_post_run_start = datetime.datetime.now() + datetime.timedelta(minutes=POST_INTERVAL_MINUTES)
         logging.info(f'The next POST run will begin in {POST_INTERVAL_MINUTES} minutes (at approx:\t{str(next_post_run_start)})\n')
         exit_threads.wait(SECONDS_PER_MINUTE * POST_INTERVAL_MINUTES)
         num_runs += 1
@@ -141,6 +141,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
         run_start_time = datetime.datetime.now()
         print(f'RUN #{run_number}:\nStart time: {str(run_start_time)}')
 
+        # retrieve authors each time to allow for authors being added mid-run
         known_authors_res = get_all_known_authors(author_db=authors_db, use_prod=USE_PROD)
         targets = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
 
@@ -198,7 +199,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
                         )
 
                         num_skip = insert_res["num_skipped"]
-                        num_inserted = len(insert_res["res_list"])
+                        num_inserted = insert_res["num_inserted"]
                         print(f'done.{f" ({num_inserted} inserted, {num_skip} skipped)" if num_skip > 0 else ""}')
 
                     print('\tMarking all tweets as seen...', end=' ')
@@ -231,7 +232,7 @@ def run_tweet_parser(time_interval_seconds: float = minutes_to_seconds()):
 
         print(f'\nTweets added this run:\t\t{num_added_this_run}')
         print(f'Total Tweets added this session:\t{session_num_added}')
-        next_run_start = datetime.datetime.now() + datetime.timedelta(seconds=time_interval_seconds)
+        next_run_start = datetime.datetime.now() + datetime.timedelta(minutes=num_minutes)
         print(f'The next run will begin in {int(num_minutes)} minutes (at approx:\t{str(next_run_start)})')
         print_bar()
         run_number += 1
@@ -247,14 +248,14 @@ if __name__ == '__main__':
         if args.refresh_dbs or args.refresh_all:
             print('Refreshing Mongo database of parsed Tweets...')
             mongo_start_time = datetime.datetime.now()
-            revisit_seen_tweets(show_output=args.show_debug_logs)
+            revisit_seen_tweets(show_output=args.show_debug_logs, use_prod=args.use_prod)
             mongo_end_time = datetime.datetime.now()
             mongo_elapsed_time = mongo_end_time - mongo_start_time
             print(f'Done ({mongo_elapsed_time}).')
         if args.refresh_wks or args.refresh_all:
             print('Refreshing Google Spreadsheets...')
             google_start_time = datetime.datetime.now()
-            complete_refresh_spreadsheets(show_output=args.show_debug_logs)
+            complete_refresh_spreadsheets(show_output=args.show_debug_logs, use_prod=args.use_prod)
             google_end_time = datetime.datetime.now()
             google_elapsed_time = google_end_time - google_start_time
             print(f'Done ({google_elapsed_time}).')
