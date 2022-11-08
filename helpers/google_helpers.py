@@ -14,7 +14,12 @@ def init_google_drive_clients():
     tweet_suggestion_wks = sh.get_worksheet(SUGGESTION_WORKSHEET_NUM)
     stats_wks = sh.get_worksheet(STATS_WORKSHEET_NUM)
     blocked_term_wks = sh.get_worksheet(BLOCKED_TERM_WORKSHEET_NUM)
-    return [wordmap_wks, tweet_suggestion_wks, stats_wks, blocked_term_wks]
+    return [
+        wordmap_wks,
+        tweet_suggestion_wks,
+        stats_wks,
+        blocked_term_wks
+    ]
 
 
 def get_first_blank_row(worksheet, show_output: bool = False):
@@ -22,6 +27,7 @@ def get_first_blank_row(worksheet, show_output: bool = False):
     id_col = worksheet.col_values(1)
     rowNum = len(id_col) + 1
     if show_output:
+        print(f'id_col: {id_col}')
         print(f'firstBlank: {source_col}{rowNum}')
     return [source_col, rowNum]
 
@@ -34,8 +40,7 @@ def get_most_recent_tweet_row(worksheet) -> int:
 def get_most_recent_tweet_id_from_worksheet(worksheet):
     most_recent_row = get_most_recent_tweet_row(worksheet)
     target_cell = ''.join([SUGGESTION_COL_VALS["tweet_id"], str(most_recent_row)])
-    tweet_id = str(worksheet.acell(target_cell).value)
-    return str(tweet_id)
+    return str(worksheet.acell(target_cell).value)
 
 
 def get_most_recent_tweet_url_from_worksheet(worksheet):

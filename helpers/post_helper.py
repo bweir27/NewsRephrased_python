@@ -1,4 +1,6 @@
 import datetime
+import time
+
 from helpers.helpers import mark_tweet_as_posted, get_tweet_url
 from helpers.twitter_helpers import *
 from helpers.mongo_helpers import *
@@ -64,6 +66,7 @@ def post_tweet(tweet, show_output: bool = False, use_prod: bool = False):
                 print(t_res.data)
             #  Mark Tweet as posted in eligible_tweet db
             mark_tweet_as_posted(tweet_id=quote_id, use_prod=use_prod)
+            time.sleep(2)
             reply_text = format_reply_text(to_quote)
             if show_output:
                 print(f"\"{reply_text}\"")

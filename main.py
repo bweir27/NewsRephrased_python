@@ -255,7 +255,8 @@ if __name__ == '__main__':
         if args.refresh_wks or args.refresh_all:
             print('Refreshing Google Spreadsheets...')
             google_start_time = datetime.datetime.now()
-            complete_refresh_spreadsheets(show_output=args.show_debug_logs, use_prod=args.use_prod)
+            # FIXME: see FIXME on google_helpers.update_suggested_tweet_wks()
+            # complete_refresh_spreadsheets(show_output=args.show_debug_logs, use_prod=args.use_prod)
             google_end_time = datetime.datetime.now()
             google_elapsed_time = google_end_time - google_start_time
             print(f'Done ({google_elapsed_time}).')

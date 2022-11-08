@@ -117,7 +117,8 @@ WORD_MAP = {
     "restaurant": "Denny\'s",
     "GOP": "antifa",
     "antifa": "GOP",
-    "Facebook": "Webkinz"
+    "Facebook": "Webkinz",
+    "book": "audiobook"
 }
 
 """
