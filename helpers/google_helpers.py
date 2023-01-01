@@ -21,6 +21,11 @@ def init_google_drive_clients():
         blocked_term_wks
     ]
 
+# https://stackoverflow.com/questions/40781295/how-to-find-the-first-empty-row-of-a-google-spread-sheet-using-python-gspread
+# def next_available_row(worksheet) -> str:
+#     str_list = list(filter(None, worksheet.col_values(1)))
+#     return str(len(str_list)+1)
+
 
 def get_first_blank_row(worksheet, show_output: bool = False):
     source_col = SUGGESTION_COL_VALS["source"]
