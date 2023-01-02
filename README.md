@@ -6,7 +6,7 @@ of the original tweet. Some [eligible tweets](#tweet-eligibility) will then be p
 
 The replaced words ([WordMapping](https://github.com/bweir27/NewsRephrased_python/blob/master/wordmap.py)), Eligible Tweets, Overall Stats, and [Blocked Terms](https://github.com/bweir27/NewsRephrased_python/blob/master/blocked_terms.py) can all be found on the
 [NewsRephrased Google Spreadsheet](https://docs.google.com/spreadsheets/d/184VhgNxvHaDhimu-2o_ju14pb_WOE-izR7KKbgwgI0I/edit?usp=sharing).
-The list of Tweet authors can also be found on the aforementioned Overall Stats page of the NewsRephrased Spreadsheet.
+The list of Tweet authors can also be found on the Overall Stats page of the aforementioned NewsRephrased Spreadsheet.
 
 
 ## Tweet Eligibility
