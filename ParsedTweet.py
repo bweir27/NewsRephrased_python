@@ -39,7 +39,7 @@ class ParsedTweet:
         # self.seen_obj = self.seen_tweet()
 
     def __str__(self):
-        return json.dump(self.as_json())
+        return json.dumps(self.as_json())
 
     def __repr__(self):
         return str(self)
@@ -63,6 +63,7 @@ class ParsedTweet:
 
     def seen_tweet(self):
         return {
+            "_id": str(self.tweet_id),
             "author": self.author.as_json(),
             "tweet_id": str(self.tweet_id),
             "created_at": self.created_at,

@@ -101,8 +101,7 @@ def drop_unposted_tweets(use_prod: bool = False):
     for t in posted_res:
         posted_ids.append(t["_id"])
         posted_text.add(t["modified_text"])
-    delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"_id": {"$nin": posted_ids}}]})
-    num_remaining = tweet_db.count_documents({})
+    return tweet_db.delete_many(filter={"$and": [{"posted": False}, {"_id": {"$nin": posted_ids}}]})
 
 
 def drop_eligible_duplicates(use_prod: bool = False):
@@ -117,7 +116,7 @@ def drop_eligible_duplicates(use_prod: bool = False):
         posted_ids.add(t["_id"])
         posted_text.add(t["modified_text"])
     # get all unposted tweets
-    unposted_res = tweet_db.find().sort("_id", 1)
+    unposted_res = tweet_db.find({"posted": False}).sort("_id", 1)
 
     seen = set()
     unposted_mod_text = set()
@@ -129,7 +128,20 @@ def drop_eligible_duplicates(use_prod: bool = False):
             unposted_mod_text.add(mod_txt)
             u_ids.append(t["_id"])
     delete_res = tweet_db.delete_many(filter={"$and": [{"posted": False}, {"_id": {"$nin": u_ids}}]})
-    num_remaining = tweet_db.count_documents({})
+    return delete_res
+
+
+def revisit_insert_helper(seen_db, tweet_db, show_output: bool, parsed_tweets):
+    if show_output:
+        print(f'Inserting {len(parsed_tweets)} docs...')
+    seen_res = insert_many_tweets_to_seen_db(seen_db=seen_db, parsed_tweets=parsed_tweets)
+    insert_res = insert_parsed_tweets_to_mongodb(tweet_db=tweet_db, parsed_tweets=parsed_tweets)
+    num_skipped = insert_res["num_skipped"]
+    if show_output:
+        print(f'{num_skipped} skipped.')
+        pprint.pprint(seen_res)
+        pprint.pprint(insert_res)
+    return num_skipped
 
 
 def revisit_seen_tweets(show_output=False, use_prod: bool = False):
@@ -137,10 +149,18 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     db = init_mongo_client(use_prod=use_prod)
     tweet_db = db[DB_TWEET_COLLECTION_NAME]
     seen_db = db[DB_SEEN_COLLECTION_NAME]
+    author_db = db[DB_AUTHORS_COLLECTION_NAME]
+    num_seen_start = seen_db.count_documents({})
+    num_eligible_start = tweet_db.count_documents({})
     drop_unposted_tweets(use_prod=use_prod)
-    num_start = tweet_db.count_documents({})
+    posted_tweets = tweet_db.find({"posted": True})
+    posted_ids = set()
+    for t in posted_tweets:
+        posted_ids.add(str(t["tweet_id"]))
+
     if show_output:
-        print(f"startNum: {num_start}")
+        print(f"Num Seen (start): {num_seen_start}")
+        print(f"Num Eligible (start): {num_eligible_start}")
     # refresh Twitter client
     twitter_client = init_twitter_client()
     all_seen_tweet_docs = seen_db.find({}, {"_id": 1, "tweet_id": 1}).sort("_id", -1)
@@ -148,12 +168,15 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     # get list of IDs for all the "seen" tweets
     to_visit_ids = list()
     for t in all_seen_tweet_docs:
-        to_visit_ids.append(str(t["tweet_id"]))
+        tweet_id = str(t["tweet_id"])
+        if tweet_id not in posted_ids:
+            to_visit_ids.append(str(t["tweet_id"]))
+
     # have to split list into segments of 100 because twitter API only allows 100 at a time
     split_size = 100
     a_splitted = [to_visit_ids[x:x + split_size] for x in range(0, len(to_visit_ids), split_size)]
 
-    known_authors_res = get_all_known_authors(use_prod=use_prod)
+    known_authors_res = get_all_known_authors(author_db=author_db, use_prod=use_prod)
     authors = list(map(lambda x: get_parsed_author_obj(x), known_authors_res))
     auth_dict = {}
     total_num_skipped = 0
@@ -161,30 +184,48 @@ def revisit_seen_tweets(show_output=False, use_prod: bool = False):
     for a in authors:
         auth_dict[str(a.author_id)] = a
 
+    tweet_objs = list()
     for segment in a_splitted:
-        retrieved_tweets = twitter_client.get_tweets(ids=segment,
-                                                     expansions="author_id",
-                                                     tweet_fields=["id", "text", "created_at"],
-                                                     user_fields=["username"]
-                                                     )
+        retrieved_tweets = twitter_client.get_tweets(
+            ids=segment,
+            expansions="author_id",
+            tweet_fields=["id", "text", "created_at"],
+            user_fields=["username"]
+        )
         total_num_retrieved += len(retrieved_tweets.data)
         if show_output:
             print(f'{len(retrieved_tweets.data)} Tweets retrieved.')
-        tweet_objs = list(map(lambda x: get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]), retrieved_tweets.data))
-        if show_output:
-            print('Inserting...')
-        seen_res = insert_many_tweets_to_seen_db(seen_db=seen_db, parsed_tweets=tweet_objs)
-        insert_res = insert_parsed_tweets_to_mongodb(tweet_db=tweet_db, parsed_tweets=tweet_objs)
-        total_num_skipped += insert_res["num_skipped"]
-        if show_output:
-            print(f'{insert_res["num_skipped"]} skipped.')
+
+        # newly_retrieved_objs = list(map(lambda x: get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]), retrieved_tweets.data))
+        newly_retrieved_objs = [get_parsed_tweet_obj(x, auth_dict[str(x["author_id"])]) for x in retrieved_tweets.data]
+        tweet_objs.extend(newly_retrieved_objs)
+        # minimize frequency of DB queries
+        if len(tweet_objs) > 800:
+            skipped = revisit_insert_helper(
+                seen_db=seen_db,
+                tweet_db=tweet_db,
+                show_output=show_output,
+                parsed_tweets=tweet_objs
+            )
+            total_num_skipped += skipped
+            tweet_objs = list()
+
+    # One more for good measure
+    if len(tweet_objs) > 0:
+        skipped = revisit_insert_helper(
+            seen_db=seen_db,
+            tweet_db=tweet_db,
+            show_output=show_output,
+            parsed_tweets=tweet_objs
+        )
+        total_num_skipped += skipped
     if show_output:
         print('Done.')
-        print(f"startNum: {num_start}")
+        print(f"startNum: {num_eligible_start}")
         print(f"Total retrieved: {total_num_retrieved}")
         print(f"Total skipped: {total_num_skipped}")
         print(f"Net: {total_num_retrieved - total_num_skipped}")
-    drop_eligible_duplicates()
+    drop_eligible_duplicates(use_prod=use_prod)
 
 
 def mark_tweet_as_posted(tweet_id: str, tweet_db=None, use_prod: bool = False):

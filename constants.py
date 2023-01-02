@@ -34,8 +34,6 @@ USE_DEV_ENV = False
 SCRIPT_DESCRIPTION = ''
 EPILOG = ''
 
-
-
 SEED_DATA_CSV = "CSVs/NewsRephrased_SeededSuggestions.csv"
 
 # ======== Google constants ========

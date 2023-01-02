@@ -108,13 +108,17 @@ WORD_MAP = {
     "gasoline": "weed",
     "gas ": "weed ",
     " gas ": " weed ",
+    " gas": " weed",
     "breaking news": "HOLY SHIT",
     "yacht": "canoe",
     "former": "disgraced",
     "committee": "fanclub",
     "restaurants": "Denny\'s",
     "restaurant": "Denny\'s",
-    "GOP": "Antifa",
+    "GOP": "antifa",
+    "antifa": "GOP",
+    "Facebook": "Webkinz",
+    "book": "audiobook"
 }
 
 """
@@ -126,5 +130,6 @@ WORDMAP_SWAP_CASES = {
     "Netflix", "Quibi",
     "international", "local",
     "year", "minute",
+    "GOP", "antifa"
 }
 

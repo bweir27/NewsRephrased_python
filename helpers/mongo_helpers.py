@@ -1,8 +1,6 @@
 import json
-
 import pymongo.results
-from pymongo import MongoClient
-
+from pymongo import MongoClient, database, results, response
 import secrets
 from ParsedTweet import ParsedTweet
 from TweetAuthor import TweetAuthor
@@ -10,17 +8,16 @@ from constants import *
 
 
 # =============== SETUP OPERATIONS =========
-def init_mongo_client(use_prod=False):
+def init_mongo_client(use_prod=False) -> pymongo.database.Database:
     host = MONGO_HOST
     if use_prod:
         host = secrets.MONGO_ATLAS_CONNECTION_STRING
     mongo_client = MongoClient(host)
-    db = mongo_client[DB_NAME]
-    return db
+    return mongo_client[DB_NAME]
 
 
 # =============== AUTHOR OPERATIONS =========
-def author_is_known(parsed_author, author_db=None, use_prod: bool = False):
+def author_is_known(parsed_author, author_db=None, use_prod: bool = False) -> bool:
     if parsed_author is None or not isinstance(parsed_author, TweetAuthor):
         raise Exception('Invalid input for \"parsed_author\"')
     if author_db is None:
@@ -48,7 +45,7 @@ def get_all_known_authors(author_db=None, use_prod: bool = False):
     return author_db.find({})
 
 
-def insert_author_into_db(parsed_author: TweetAuthor, author_db=None, use_prod: bool = False):
+def insert_author_into_db(parsed_author: TweetAuthor, author_db=None, use_prod: bool = False) -> pymongo.results.UpdateResult:
     if parsed_author is None or not isinstance(parsed_author, TweetAuthor):
         raise Exception('Invalid input for \"parsed_author\" '
                         f'(expected type TweetAuthor, received {type(parsed_author)}')
@@ -82,8 +79,8 @@ def get_most_recent_seen_tweet_id_mongo(author_id=None, use_prod: bool = False):
         if num_seen is None or num_seen <= 0:
             #     TODO: handle empty seen tweet DB
             return get_oldest_seen_tweet_id_mongo(use_prod=use_prod)
-    max_id = seen_tweet_db.find(find_query).sort("_id", -1)[0]
-    return str(max_id["_id"])
+    max_id = seen_tweet_db.find(find_query).sort("tweet_id", -1)[0]
+    return str(max_id["tweet_id"])
 
 
 def tweet_in_seen_mongodb(seen_db, parsed_tweet=None, tweet_id=None):
@@ -166,14 +163,13 @@ def insert_tweet_to_seen_db(seen_db, parsed_tweet):
     return res
 
 
-def insert_many_tweets_to_seen_db(seen_db, parsed_tweets) -> list:
-    res_arr = list()
-    for t in parsed_tweets:
-        if not isinstance(t, ParsedTweet):
-            raise Exception(f'Invalid Tweet Object: {t}')
-        r = insert_tweet_to_seen_db(seen_db=seen_db, parsed_tweet=t)
-        res_arr.append(r)
-    return res_arr
+def insert_many_tweets_to_seen_db(seen_db, parsed_tweets):
+    if len(parsed_tweets) == 0:
+        return None
+    find_filter = {"tweet_id": {"$in": [x.tweet_id for x in parsed_tweets]}}
+    remove_res = seen_db.delete_many(filter=find_filter)
+    insert_res = seen_db.insert_many(documents=[x.seen_tweet() for x in parsed_tweets])
+    return insert_res
 
 
 # ========= Tweet Operations ===========
@@ -218,31 +214,75 @@ def insert_parsed_tweet_to_mongodb(tweet_db, parsed_tweet) -> pymongo.results.Up
 
 
 def insert_parsed_tweets_to_mongodb(tweet_db, parsed_tweets, filter_seen=True):
-    res_list = list()
     num_skipped = 0
-    for t in parsed_tweets:
+    to_post_ids = list()
+    insert_docs = list()
+    mapped_ids = [x.tweet_id for x in parsed_tweets]
+    ignore_ids = set()
+    already_posted = tweet_db.find(
+        {
+            "$and": [
+                {"tweet_id": {"$in": mapped_ids}},
+                {"posted": True}
+            ]
+        }
+    )
+    for doc in already_posted:
+        ignore_ids.add(doc["tweet_id"])
+
+    eligible = list()
+    for x in parsed_tweets:
+        if x.is_eligible:
+            eligible.append(x)
+        else:
+            ignore_ids.add(x.tweet_id)
+
+    for t in eligible:
         if not isinstance(t, ParsedTweet):
             raise Exception(f'Invalid Tweet Object: {t}')
-        already_posted = tweet_db.count_documents({"$and": [{"_id": t.tweet_id}, {"posted": True}]})
         already_seen = tweet_db.count_documents({"modified_text": t.modified_text})
-        if t.num_replacements < 1 or already_posted > 0 or already_seen > 0:
+        if t.tweet_id in ignore_ids or already_seen > 0 or not t.is_eligible:
             num_skipped += 1
             continue
-        update_arg = {
-            "$set": t.as_json()
-        }
-        r = tweet_db.update_one(filter={"_id": t.tweet_id},
-                                update=update_arg,
-                                upsert=True,
-                                array_filters=None)
-        res_list.append(r)
+        to_post_ids.append(t.tweet_id)
+        insert_docs.append(t.as_json())
+
+    remove_res = None
+    insert_res = None
+    insert_count = len(insert_docs)
+    if len(insert_docs) > 0:
+        remove_res = tweet_db.delete_many(filter={"tweet_id": {"$in": to_post_ids}})
+        insert_res = tweet_db.insert_many(documents=insert_docs)
+        insert_count = len(insert_res.inserted_ids)
     return {
         "num_skipped": num_skipped,
-        "res_list": res_list
+        "num_inserted": insert_count,
+        "raw_res": insert_res,
     }
 
+    # for t in parsed_tweets:
+    #     if not isinstance(t, ParsedTweet):
+    #         raise Exception(f'Invalid Tweet Object: {t}')
+    #     already_posted = tweet_db.count_documents({"$and": [{"_id": t.tweet_id}, {"posted": True}]})
+    #     already_seen = tweet_db.count_documents({"modified_text": t.modified_text})
+    #     if t.num_replacements < 1 or already_posted > 0 or already_seen > 0:
+    #         num_skipped += 1
+    #         continue
+    #     update_arg = {
+    #         "$set": t.as_json()
+    #     }
+    #     r = tweet_db.update_one(filter={"_id": t.tweet_id},
+    #                             update=update_arg,
+    #                             upsert=True,
+    #                             array_filters=None)
+    #     res_list.append(r)
+    # return {
+    #     "num_skipped": num_skipped,
+    #     "res_list": res_list
+    # }
 
-def insert_posted_tweet_to_db(posted_obj: dict, posted_db = None, use_prod: bool = False):
+
+def insert_posted_tweet_to_db(posted_obj: dict, posted_db=None, use_prod: bool = False):
     if posted_db is None:
         posted_db = init_mongo_client(use_prod=use_prod)[DB_POSTED_COLLECTION_NAME]
     insert_res = posted_db.update_one(

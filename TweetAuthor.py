@@ -1,3 +1,4 @@
+import json
 from constants import BASE_URL
 
 
@@ -10,16 +11,16 @@ class TweetAuthor:
         self.username = username
         self.formatted_name = f'{self.name} (@{self.username})'
         self.url = f'{BASE_URL}{self.username}'
-        # self.json = self.as_json()
 
     def __str__(self):
-        return str(self.as_json())
+        return json.dumps(self.as_json())
 
     def __repr__(self):
-        return self
+        return json.dumps(self.as_json())
 
     def as_json(self):
         return {
+            "_id": str(self.author_id),
             "author_id": self.author_id,
             "name": self.name,
             "username": self.username,
